@@ -11,19 +11,22 @@ namespace tante {
 // - describe neuron dag travesion for evaluation w/o cache
 
 // classes
-// - enum Perturbation
+// - enum Change
 //
 // - Settings
+//   - size_t n_inputs
+//   - size_t n_outputs
 //   - size_t max_n_neurons
-//   - std::array<size_t> perturbation_weights
+//   - std::array<size_t> change_operation_weights
 //
-// - Neuron
-//   - enum activation_function
-//   - double bias
-//
-// - Input
-//
-// - Output
+// - Node
+//   - enum Type
+//     - neuron, input_probe, output_probe
+//   - bool is_neuron
+//   - bool is_input_probe
+//   - bool is_output_probe
+//   - enum neuron_activation_function
+//   - double neuron_bias
 //
 // - Connection
 //   - double weight
@@ -31,9 +34,9 @@ namespace tante {
 // - Net
 //   - dag
 //   - std::vector<double> get_output(input)
-//   - void perturbate(rnd01)
+//   - void change(rnd01)
 //   - void randomize(rnd01)
-//   - void _add_neuron(rnd01)
+//   - void _add_neuron(rnd01)  // and other change operations
 
 // Notes
 // neuron
@@ -72,7 +75,7 @@ namespace tante {
 // - inputs
 // - outputs
 // - dag
-// - perturbate (perturbation classes)
+// - change
 //   - add neuron
 //   - remove neuron
 //   - remove unused neuron
@@ -101,9 +104,9 @@ namespace tante {
 
 // algorithms
 // - init new net
-//   - make random perturbations until first signal is passed from every output
+//   - make random changes until first signal is passed from every output
 //   - a working net is needed to be able to perform its evaluations
-//     after every perturbation later
+//     after every change later
 // - restore net operability
 //   - not implemented
 //   - overcomplication for the first iteration

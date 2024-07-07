@@ -1,3 +1,7 @@
+#include <array>
+#include <vector>
+#include <functional>
+
 namespace tante {
 
 // Refs
@@ -6,39 +10,115 @@ namespace tante {
 // - bgl: add weights to edges - https://stackoverflow.com/questions/24366642/how-do-i-change-the-edge-weight-in-a-graph-using-the-boost-graph-library
 // - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
-// TODO
-// - how to organize input kernels, inputs, outputs
-// - describe neuron dag travesion for evaluation w/o cache
+enum class NetChangeOperation {
+    ADD_NEURON = 0,
+    REMOVE_NEURON,
+    ADD_CONNECTION,
+    REMOVE_CONNECTION,
+    // TODO: add more as needed
+    NUMBER_OF_NCOS
+};
 
-// classes
-// - enum Change
-//
-// - Settings
-//   - size_t n_inputs
-//   - size_t n_outputs
-//   - size_t max_n_neurons
-//   - std::array<size_t> change_operation_weights
-//
-// - Node
-//   - enum Type
-//     - neuron, input_probe, output_probe
-//   - bool is_neuron
-//   - bool is_input_probe
-//   - bool is_output_probe
-//   - enum neuron_activation_function
-//   - double neuron_bias
-//
-// - Connection
-//   - double weight
-//
-// - Net
-//   - dag
-//   - std::vector<double> get_output(input)
-//   - void change(rnd01)
-//   - void randomize(rnd01)
-//   - void _add_neuron(rnd01)  // and other change operations
+struct Settings {
+    size_t n_inputs;
+    size_t n_outputs;
+    size_t max_n_neurons;
+    std::array<size_t, NetChangeOperation::NUMBER_OF_NCOS> net_change_operation_weights;
+};
 
-// Notes
+struct Node {
+    enum class Type {
+        NEURON = 0,
+        INPUT_PROBE,
+        OUTPUT_PROBE,
+        NUMBER_OF_NTS
+    };
+
+    Type type;
+
+    bool is_neuron()
+    {
+        return type == Type::NEURON;
+    }
+
+    bool is_input_probe()
+    {
+        return type == Type::INPUT_PROBE;
+    }
+
+    bool is_output_probe()
+    {
+        return type == Type::OUTPUT_PROBE;
+    }
+
+    double output_signal;
+    bool output_signal_calculated = false;  // temporary marker during
+                                            // net output calculation
+
+    enum class NeuronActivationFunction {
+        SIGMOID = 0,
+        // TODO: add more as needed
+        NUMBER_OF_NAFS
+    };
+
+    NeuronActivationFunction neuron_activation_function;
+    double neuron_bias;
+};
+
+struct Connection {
+    double weight;
+};
+
+class Net {
+private:
+    void _add_neuron(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+    void _remove_neuron(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+    void _add_connection(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+    void _remove_connection(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+public:
+    // TODO: add dag using bgl
+
+    std::vector<double> get_outputs(std::vector<double>& inputs)
+    {
+        // TODO: implement
+        return std::vector<double> {0};
+    }
+
+    virtual void change(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+    virtual void randomize(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
+
+}
+
+// NOTES:
 // neuron
 // - activation_function
 // - bias

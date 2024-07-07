@@ -1,5 +1,15 @@
 namespace tante {
 
+// Refs
+// - bgl: find in/out nodes - https://stackoverflow.com/questions/48608876/find-the-child-nodes-in-a-graph-using-boost
+// - bgl: find cyclic paths - https://stackoverflow.com/questions/23771885/boost-graph-that-doesnt-allow-circular-references
+// - bgl: add weights to edges - https://stackoverflow.com/questions/24366642/how-do-i-change-the-edge-weight-in-a-graph-using-the-boost-graph-library
+// - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
+
+// TODO
+// - define own classes
+// - describe neuron dag travesion for evaluation w cache
+
 // settings
 // - perturbation_class_weights
 //   - set to 0 to disable

@@ -7,6 +7,7 @@ namespace tante {
 // - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
 // TODO
+// - how to organize input kernels, inputs, outputs
 // - describe neuron dag travesion for evaluation w/o cache
 
 // classes

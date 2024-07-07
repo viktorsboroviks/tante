@@ -7,18 +7,16 @@ namespace tante {
 // - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
 // TODO
-// - define own classes
 // - describe neuron dag travesion for evaluation w cache
-
-// settings
-// - perturbation_class_weights
-//   - set to 0 to disable
-// - perturbation weights
-//   - weights for selecting different activation functions
-//   - simpler to have only 1 level of perturbations
-// - max_n_neurons
+// - how to store/address history?
 
 // classes
+// - enum Perturbation
+//
+// - Settings
+//   - size_t max_n_neurons
+//   - std::array<size_t> perturbation_weights
+//
 // - Neuron
 //   - enum activation_function
 //   - double bias
@@ -33,9 +31,12 @@ namespace tante {
 //
 // - Net
 //   - dag
+//   - std::vector<double> get_output(input)
 //   - void perturbate(rnd01)
-//   - std::vector<double> run()
+//   - void randomize(rnd01)
+//   - void _add_neuron(rnd01)
 
+// Notes
 // neuron
 // - activation_function
 // - bias

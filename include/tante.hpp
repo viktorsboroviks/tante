@@ -5,7 +5,7 @@ namespace tante {
 //   - set to 0 to disable
 // - perturbation weights
 //   - weights for selecting different activation functions
-//     (setting particular activation f can become separate perturbation)
+//   - simpler to have only 1 level of perturbations
 // - max_n_neurons
 
 // neuron
@@ -13,11 +13,14 @@ namespace tante {
 // - bias
 // - signal_cache
 // - signal_cache_updated (find a better name)
-// - inputs (why do i need to know those?)
+//   - signal_cache_modified
+// - inputs
+//   - might become needed for marking data unused or removing orphan graphs
 // - outputs
 //   - must be recalculated if signal_cache_updated = true
 // - inputs_allowed
 // - outputs_allowed
+//   - instead - make input/output a separate class
 // - unused
 //   - needed to be able to preserve history or grow paths that do not provide
 //     value before finished
@@ -40,10 +43,7 @@ namespace tante {
 // network
 // - inputs
 // - outputs
-// - interconnected neurons
-//   - neurons?
-//   - connections?
-//   - both?
+// - dag
 // - perturbate (perturbation classes)
 //   - add neuron
 //   - remove neuron

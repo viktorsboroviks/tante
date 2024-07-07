@@ -7,8 +7,7 @@ namespace tante {
 // - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
 // TODO
-// - describe neuron dag travesion for evaluation w cache
-// - how to store/address history?
+// - describe neuron dag travesion for evaluation w/o cache
 
 // classes
 // - enum Perturbation
@@ -20,7 +19,6 @@ namespace tante {
 // - Neuron
 //   - enum activation_function
 //   - double bias
-//   - std::vector<double> signal_cache
 //
 // - Input
 //

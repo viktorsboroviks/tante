@@ -18,6 +18,24 @@ namespace tante {
 //   - simpler to have only 1 level of perturbations
 // - max_n_neurons
 
+// classes
+// - Neuron
+//   - enum activation_function
+//   - double bias
+//   - std::vector<double> signal_cache
+//
+// - Input
+//
+// - Output
+//
+// - Connection
+//   - double weight
+//
+// - Net
+//   - dag
+//   - void perturbate(rnd01)
+//   - std::vector<double> run()
+
 // neuron
 // - activation_function
 // - bias
@@ -136,8 +154,5 @@ namespace tante {
 //     - mark out node as "modified"
 //     - mark all out nodes of modified nodes as modified recursively
 //     - evaluate net
-
-// classes
-// - ?
 
 }

@@ -1,20 +1,25 @@
 #include <array>
-#include <vector>
 #include <functional>
+#include <vector>
 
 namespace tante {
 
 // Refs
-// - bgl: find in/out nodes - https://stackoverflow.com/questions/48608876/find-the-child-nodes-in-a-graph-using-boost
-// - bgl: find cyclic paths - https://stackoverflow.com/questions/23771885/boost-graph-that-doesnt-allow-circular-references
-// - bgl: add weights to edges - https://stackoverflow.com/questions/24366642/how-do-i-change-the-edge-weight-in-a-graph-using-the-boost-graph-library
-// - bgl: bundled properties - https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
+// - bgl: find in/out nodes -
+// https://stackoverflow.com/questions/48608876/find-the-child-nodes-in-a-graph-using-boost
+// - bgl: find cyclic paths -
+// https://stackoverflow.com/questions/23771885/boost-graph-that-doesnt-allow-circular-references
+// - bgl: add weights to edges -
+// https://stackoverflow.com/questions/24366642/how-do-i-change-the-edge-weight-in-a-graph-using-the-boost-graph-library
+// - bgl: bundled properties -
+// https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
 enum class NetChangeOperation {
     ADD_NEURON = 0,
     REMOVE_NEURON,
     ADD_CONNECTION,
     REMOVE_CONNECTION,
+    MOVE_CONNECTION,
     // TODO: add more as needed
     NUMBER_OF_NCOS
 };
@@ -23,7 +28,8 @@ struct Settings {
     size_t n_inputs;
     size_t n_outputs;
     size_t max_n_neurons;
-    std::array<size_t, NetChangeOperation::NUMBER_OF_NCOS> net_change_operation_weights;
+    std::array<size_t, NetChangeOperation::NUMBER_OF_NCOS>
+            net_change_operation_weights;
 };
 
 struct Node {
@@ -98,10 +104,10 @@ private:
 public:
     // TODO: add dag using bgl
 
-    std::vector<double> get_outputs(std::vector<double>& inputs)
+    std::vector<double> get_outputs(std::vector<double> &inputs)
     {
         // TODO: implement
-        return std::vector<double> {0};
+        return std::vector<double>{0};
     }
 
     virtual void change(const std::function<double(void)> &rnd01)
@@ -115,7 +121,6 @@ public:
         // TODO: implement
         (void)rnd01;
     }
-
 }
 
 // NOTES:
@@ -238,4 +243,4 @@ public:
 //     - mark all out nodes of modified nodes as modified recursively
 //     - evaluate net
 
-}
+}  // namespace tante

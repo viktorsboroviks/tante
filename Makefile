@@ -2,14 +2,19 @@
 
 all: examples
 
+lapsa:
+	git clone git@github.com:viktorsboroviks/lapsa.git
+	cd lapsa; git checkout dev-v1.3
+
 examples: \
 	find_sin.o
 
-find_sin.o: examples/find_sin.cpp
+find_sin.o: lapsa examples/find_sin.cpp
 	g++ -Wall -Wextra -Werror -Wpedantic \
 		-std=c++20 -O3 \
 		-I./include \
-		$< -o $@
+		-I./lapsa/include \
+		examples/find_sin.cpp -o $@
 
 format: \
 		include/tante.hpp \

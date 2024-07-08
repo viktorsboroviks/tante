@@ -14,21 +14,20 @@ namespace tante {
 // - bgl: bundled properties -
 // https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
-enum class NetChangeOperation {
+enum class NetChangeOperation : size_t {
     ADD_NEURON = 0,
     REMOVE_NEURON,
     ADD_CONNECTION,
     REMOVE_CONNECTION,
     MOVE_CONNECTION,
-    // TODO: add more as needed
-    NUMBER_OF_NCOS
+    NUMBER_OF_NCOS,
 };
 
 struct Settings {
     size_t n_inputs;
     size_t n_outputs;
     size_t max_n_neurons;
-    std::array<size_t, NetChangeOperation::NUMBER_OF_NCOS>
+    std::array<size_t, static_cast<size_t>(NetChangeOperation::NUMBER_OF_NCOS)>
             net_change_operation_weights;
 };
 
@@ -107,6 +106,7 @@ public:
     std::vector<double> get_outputs(std::vector<double> &inputs)
     {
         // TODO: implement
+        (void)inputs;
         return std::vector<double>{0};
     }
 
@@ -121,7 +121,7 @@ public:
         // TODO: implement
         (void)rnd01;
     }
-}
+};
 
 // NOTES:
 // neuron

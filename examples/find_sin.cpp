@@ -20,12 +20,12 @@ public:
         State(in_settings)
     {
         // TODO: add
-        sin(a, b);
     }
 
     double get_energy()
     {
         // TODO: add
+        return 0;
     }
 
     void randomize(const std::function<double(void)> &rnd01)
@@ -55,29 +55,29 @@ int main()
     lapsa::StateMachine<MyState> sm{s};
     sm.init_functions = {
             lapsa::init_log<MyState>,
-            lapsa::init_state<MyState>,
+            //            lapsa::randomize_state<MyState>,
     };
-    sm.init_loop_functions = {
-            lapsa::propose_new_state<MyState>,
-            lapsa::record_init_temperature<MyState>,
-            lapsa::select_init_temperature_as_max<MyState>,
-            lapsa::init_run_progress<MyState>,
-            lapsa::check_init_done<MyState>,
-    };
-    sm.run_loop_functions = {
-            lapsa::propose_new_state<MyState>,
-            lapsa::decide_to_cool<MyState>,
-            lapsa::cool_at_rate<MyState>,
-            lapsa::update_state<MyState>,
-            lapsa::check_run_done<MyState>,
-            lapsa::update_log<MyState>,
-            lapsa::print_run_progress<MyState>,
-    };
-    sm.finalize_functions = {
-            lapsa::clear_run_progress<MyState>,
-            lapsa::print_stats<MyState>,
-            lapsa::create_stats_file<MyState>,
-    };
+    //    sm.init_loop_functions = {
+    //            lapsa::propose_new_state<MyState>,
+    //            lapsa::record_init_temperature<MyState>,
+    //            lapsa::select_init_temperature_as_max<MyState>,
+    //            lapsa::init_run_progress<MyState>,
+    //            lapsa::check_init_done<MyState>,
+    //    };
+    //    sm.run_loop_functions = {
+    //            lapsa::propose_new_state<MyState>,
+    //            lapsa::decide_to_cool<MyState>,
+    //            lapsa::cool_at_rate<MyState>,
+    //            lapsa::update_state<MyState>,
+    //            lapsa::check_run_done<MyState>,
+    //            lapsa::update_log<MyState>,
+    //            lapsa::print_run_progress<MyState>,
+    //    };
+    //    sm.finalize_functions = {
+    //            lapsa::clear_run_progress<MyState>,
+    //            lapsa::print_stats<MyState>,
+    //            lapsa::create_stats_file<MyState>,
+    //    };
     sm.run();
     return 0;
 }

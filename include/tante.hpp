@@ -1,4 +1,5 @@
 #include <array>
+#include <boost/graph/adjacency_list.hpp>
 #include <functional>
 #include <vector>
 
@@ -101,7 +102,14 @@ private:
     }
 
 public:
-    // TODO: add dag using bgl
+    // ref: https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
+    typedef boost::adjacency_list<boost::listS,
+                                  boost::vecS,
+                                  boost::directedS,
+                                  Node,
+                                  Connection>
+            Graph;
+    Graph g;
 
     std::vector<double> get_outputs(std::vector<double> &inputs)
     {

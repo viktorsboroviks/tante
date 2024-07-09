@@ -15,7 +15,7 @@ namespace tante {
 // - bgl: bundled properties -
 // https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
 
-enum class NetChangeOperation : size_t {
+enum class NetChangeOp {
     ADD_NEURON = 0,
     REMOVE_NEURON,
     ADD_CONNECTION,
@@ -25,11 +25,14 @@ enum class NetChangeOperation : size_t {
 };
 
 struct Settings {
-    size_t n_inputs;
-    size_t n_outputs;
-    size_t max_n_neurons;
-    std::array<size_t, static_cast<size_t>(NetChangeOperation::NUMBER_OF_NCOS)>
-            net_change_operation_weights;
+    size_t n_inputs = 0;
+    size_t n_outputs = 0;
+    size_t max_n_neurons = 0;
+    size_t max_net_change_op_weight = 100;
+
+    // address using NetChangeOp:
+    // net_change_op_weights[NetChangeOp::ADD_NEURON]
+    size_t net_change_op_weights[(size_t)NetChangeOp::NUMBER_OF_NCOS] = {0};
 };
 
 struct Node {
@@ -77,6 +80,17 @@ struct Connection {
 
 class Net {
 private:
+    Settings _settings;
+
+    // ref: https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
+    typedef boost::adjacency_list<boost::listS,
+                                  boost::vecS,
+                                  boost::directedS,
+                                  Node,
+                                  Connection>
+            Graph;
+    Graph _g;
+
     void _add_neuron(const std::function<double(void)> &rnd01)
     {
         // TODO: implement
@@ -102,14 +116,25 @@ private:
     }
 
 public:
-    // ref: https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
-    typedef boost::adjacency_list<boost::listS,
-                                  boost::vecS,
-                                  boost::directedS,
-                                  Node,
-                                  Connection>
-            Graph;
-    Graph g;
+    Net(Settings &in_settings) :
+        _settings(in_settings)
+    {
+        assert(_settings.n_inputs > 0);
+        assert(_settings.n_outputs > 0);
+        assert(_settings.max_n_neurons > 0);
+        assert(_settings.max_net_change_op_weight > 0);
+#ifndef NDEBUG
+        for (auto w : _settings.net_change_op_weights) {
+            assert(w <= _settings.max_net_change_op_weight);
+        }
+#endif
+    }
+
+    void randomize(const std::function<double(void)> &rnd01)
+    {
+        // TODO: implement
+        (void)rnd01;
+    }
 
     std::vector<double> get_outputs(std::vector<double> &inputs)
     {
@@ -119,12 +144,6 @@ public:
     }
 
     virtual void change(const std::function<double(void)> &rnd01)
-    {
-        // TODO: implement
-        (void)rnd01;
-    }
-
-    virtual void randomize(const std::function<double(void)> &rnd01)
     {
         // TODO: implement
         (void)rnd01;

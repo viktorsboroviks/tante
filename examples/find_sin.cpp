@@ -1,9 +1,16 @@
 #include "lapsa.hpp"
 #include "tante.hpp"
 
+tante::Settings g_ts{};
 const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
 const size_t g_max_n_neurons = 5;
+const size_t g_max_net_change_op_weight = 1;
+const size_t g_w_add_neuron = 1;
+const size_t g_w_remove_neuron = 1;
+const size_t g_w_add_connection = 1;
+const size_t g_w_remove_connection = 1;
+const size_t g_w_move_connection = 1;
 
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
@@ -15,11 +22,14 @@ const size_t g_cooling_round_len = 1;
 const std::string g_log_filename = "find_sin_log.csv";
 
 class MyState : lapsa::State {
+private:
+    tante::Net _net;
+
 public:
     MyState(lapsa::Settings &in_settings) :
-        State(in_settings)
+        State(in_settings),
+        _net{g_ts}
     {
-        // TODO: add
     }
 
     double get_energy()
@@ -41,19 +51,39 @@ public:
     }
 };
 
+void init_global_vars()
+{
+    g_ts.n_inputs = g_n_inputs;
+    g_ts.n_outputs = g_n_outputs;
+    g_ts.max_n_neurons = g_max_n_neurons;
+    g_ts.max_net_change_op_weight = g_max_net_change_op_weight;
+    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::ADD_NEURON] =
+            g_w_add_neuron;
+    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::REMOVE_NEURON] =
+            g_w_remove_neuron;
+    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::ADD_CONNECTION] =
+            g_w_add_connection;
+    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::REMOVE_CONNECTION] =
+            g_w_remove_connection;
+    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::MOVE_CONNECTION] =
+            g_w_move_connection;
+}
+
 int main()
 {
-    lapsa::Settings s{};
-    s.n_states = g_n_states;
-    s.progress_update_period = g_progress_update_period;
-    s.init_p_acceptance = g_init_p_acceptance;
-    s.init_t_log_len = g_init_t_log_len;
-    s.cooling_rate = g_cooling_rate;
-    s.cooling_round_len = g_cooling_round_len;
-    s.log_filename = g_log_filename;
+    init_global_vars();
 
-    lapsa::StateMachine<MyState> sm{s};
-    sm.init_functions = {
+    lapsa::Settings ls{};
+    ls.n_states = g_n_states;
+    ls.progress_update_period = g_progress_update_period;
+    ls.init_p_acceptance = g_init_p_acceptance;
+    ls.init_t_log_len = g_init_t_log_len;
+    ls.cooling_rate = g_cooling_rate;
+    ls.cooling_round_len = g_cooling_round_len;
+    ls.log_filename = g_log_filename;
+
+    lapsa::StateMachine<MyState> lsm{ls};
+    lsm.init_functions = {
             lapsa::init_log<MyState>,
             //            lapsa::randomize_state<MyState>,
     };
@@ -78,6 +108,6 @@ int main()
     //            lapsa::print_stats<MyState>,
     //            lapsa::create_stats_file<MyState>,
     //    };
-    sm.run();
+    lsm.run();
     return 0;
 }

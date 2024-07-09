@@ -43,6 +43,13 @@ struct Node {
         NUMBER_OF_NTS
     };
 
+    Node(Type in_type) :
+        type(in_type)
+    {
+        assert(in_type >= Type::NEURON);
+        assert(in_type < Type::NUMBER_OF_NTS);
+    }
+
     Type type;
 
     bool is_neuron()
@@ -80,8 +87,6 @@ struct Connection {
 
 class Net {
 private:
-    Settings _settings;
-
     // ref: https://www.boost.org/doc/libs/1_69_0/libs/graph/doc/bundles.html
     typedef boost::adjacency_list<boost::listS,
                                   boost::vecS,
@@ -89,6 +94,8 @@ private:
                                   Node,
                                   Connection>
             Graph;
+    typedef Graph::vertex_descriptor Vertex;
+    Settings _settings;
     Graph _g;
 
     void _add_neuron(const std::function<double(void)> &rnd01)
@@ -115,6 +122,35 @@ private:
         (void)rnd01;
     }
 
+    bool _net_is_operational()
+    {
+        std::vector<size_t> input_probes_idx;
+        std::vector<size_t> output_probes_idx;
+        for (size_t i = 0; i < boost::num_vertices(_g); i++) {
+            if (_g[i].is_input_probe()) {
+                input_probes_idx.push_back(i);
+            }
+            else if (_g[i].is_output_probe()) {
+                output_probes_idx.push_back(i);
+            }
+        }
+        assert(input_probes_idx.size() == _settings.n_inputs);
+        assert(output_probes_idx.size() == _settings.n_outputs);
+        // every output has a connection to at least one input
+        // every input has a connection to at least one input
+        // TODO: add
+        return true;
+    }
+
+    void _restore_net(const std::function<double(void)> &rnd01)
+    {
+        while (!_net_is_operational()) {
+            //
+        }
+        // TODO: implement
+        (void)rnd01;
+    }
+
 public:
     Net(Settings &in_settings) :
         _settings(in_settings)
@@ -132,6 +168,23 @@ public:
 
     void randomize(const std::function<double(void)> &rnd01)
     {
+        // add input probes
+        assert(boost::num_vertices(_g) == 0);
+        for (size_t i = 0; i < _settings.n_inputs; i++) {
+            Node n{Node::Type::INPUT_PROBE};
+            boost::add_vertex(n, _g);
+        }
+        assert(boost::num_vertices(_g) == _settings.n_inputs);
+
+        // add output probes
+        for (size_t i = 0; i < _settings.n_outputs; i++) {
+            Node n{Node::Type::OUTPUT_PROBE};
+            boost::add_vertex(n, _g);
+        }
+        assert(boost::num_vertices(_g) ==
+               _settings.n_inputs + _settings.n_outputs);
+
+        // restore network (necessary for energy calculation)
         // TODO: implement
         (void)rnd01;
     }
@@ -158,14 +211,16 @@ public:
 // - signal_cache_updated (find a better name)
 //   - signal_cache_modified
 // - inputs
-//   - might become needed for marking data unused or removing orphan graphs
+//   - might become needed for marking data unused or removing orphan
+//   graphs
 // - outputs
 //   - must be recalculated if signal_cache_updated = true
 // - inputs_allowed
 // - outputs_allowed
 //   - instead - make input/output a separate class
 // - unused
-//   - needed to be able to preserve history or grow paths that do not provide
+//   - needed to be able to preserve history or grow paths that do not
+//   provide
 //     value before finished
 //   - mark unused
 //     - if no outputs

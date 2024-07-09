@@ -40,8 +40,7 @@ public:
 
     void randomize(const std::function<double(void)> &rnd01)
     {
-        // TODO: add
-        (void)rnd01;
+        _net.randomize(rnd01);
     }
 
     void change(const std::function<double(void)> &rnd01)
@@ -85,7 +84,7 @@ int main()
     lapsa::StateMachine<MyState> lsm{ls};
     lsm.init_functions = {
             lapsa::init_log<MyState>,
-            //            lapsa::randomize_state<MyState>,
+            lapsa::randomize_state<MyState>,
     };
     //    sm.init_loop_functions = {
     //            lapsa::propose_new_state<MyState>,

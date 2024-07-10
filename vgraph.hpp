@@ -1,22 +1,31 @@
 #include <cassert>
 #include <vector>
 
-// Vertex
-// _g?
-// - get_in_edges()
-//   - return <int>?
-//   - return pointers?
-// - get_out_edges()
-// - get_in_nodes()
-// - get_out_nodes()
-//
-// Edge
-//
 // Graph
 // vertices
-// - vector
-//   - in_edges
-//   - out_edges
+// - array of max size
+// edges
+// - array of max sizr
+// add/remove
+//
+// Vertex
+// size_t i
+// bool exists
+// vector size_t _in_edges_i
+// vector size_t _out_edges_i
+// - get_in_edges_i()
+// - get_out_edges_i()
+// - get_in_vertex_i()
+// - get_out_vertex_i()
+//
+// Edge
+// size_t i
+// bool exists
+// size_t _src_vertex_i
+// size_t _dst_vertex_i
+// - get_src_vertex_i()
+// - get_dst_vertex_i()
+
 struct Vertex {
     std::vector<Edge*> p_in_edges;
     std::vector<Edge*> p_out_edges;

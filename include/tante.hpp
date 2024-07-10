@@ -124,6 +124,7 @@ private:
 
     bool _net_is_operational()
     {
+        // all input/output probes are in place
         std::vector<size_t> input_probes_idx;
         std::vector<size_t> output_probes_idx;
         for (size_t i = 0; i < boost::num_vertices(_g); i++) {
@@ -136,9 +137,11 @@ private:
         }
         assert(input_probes_idx.size() == _settings.n_inputs);
         assert(output_probes_idx.size() == _settings.n_outputs);
+
         // every output has a connection to at least one input
+
         // every input has a connection to at least one input
-        // TODO: add
+
         return true;
     }
 

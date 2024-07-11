@@ -9,12 +9,14 @@
 // add/remove
 // - queue of not_allocated_vertex_i
 // - queue of not_allocated_edge_i
+// - if not allocated exist - use
+//   else - extend vector
 //
 // Vertex
 // size_t i
-// bool exists
-// vector size_t _in_edges_i
-// vector size_t _out_edges_i
+// bool allocated
+// set size_t _in_edges_i
+// set size_t _out_edges_i
 // - get_in_edges_i()
 // - get_out_edges_i()
 // - get_in_vertex_i()

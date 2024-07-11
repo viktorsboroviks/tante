@@ -3,10 +3,12 @@
 
 // Graph
 // vertices
-// - array of max size
+// - vector
 // edges
-// - array of max sizr
+// - vector
 // add/remove
+// - queue of not_allocated_vertex_i
+// - queue of not_allocated_edge_i
 //
 // Vertex
 // size_t i

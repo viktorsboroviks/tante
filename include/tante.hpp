@@ -25,7 +25,7 @@ struct Settings {
 };
 
 struct Neuron {
-    enum class ActivationF {
+    enum ActivationF {
         SIGMOID = 0,
         N_AFS
     };

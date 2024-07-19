@@ -5,12 +5,12 @@ tante::Settings g_ts{};
 const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
 const size_t g_max_n_neurons = 5;
-const size_t g_max_net_change_op_weight = 1;
-const size_t g_w_add_neuron = 1;
-const size_t g_w_remove_neuron = 1;
-const size_t g_w_add_connection = 1;
-const size_t g_w_remove_connection = 1;
-const size_t g_w_move_connection = 1;
+const size_t g_max_op_weight = 1;
+const size_t g_op_w_add_neuron = 1;
+const size_t g_op_w_rm_neuron = 1;
+const size_t g_op_w_add_connection = 1;
+const size_t g_op_w_rm_connection = 1;
+const size_t g_op_w_move_connection = 1;
 
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
@@ -21,14 +21,14 @@ const size_t g_cooling_round_len = 1;
 
 const std::string g_log_filename = "find_sin_log.csv";
 
-class MyState : lapsa::State {
+class MyState : public lapsa::State {
 private:
-    tante::Net _net;
+    tante::Network _n;
 
 public:
     MyState(lapsa::Settings &in_settings) :
         State(in_settings),
-        _net{g_ts}
+        _n{g_ts}
     {
     }
 
@@ -40,7 +40,7 @@ public:
 
     void randomize(const std::function<double(void)> &rnd01)
     {
-        _net.randomize(rnd01);
+        _n.randomize(rnd01);
     }
 
     void change(const std::function<double(void)> &rnd01)
@@ -55,17 +55,12 @@ void init_global_vars()
     g_ts.n_inputs = g_n_inputs;
     g_ts.n_outputs = g_n_outputs;
     g_ts.max_n_neurons = g_max_n_neurons;
-    g_ts.max_net_change_op_weight = g_max_net_change_op_weight;
-    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::ADD_NEURON] =
-            g_w_add_neuron;
-    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::REMOVE_NEURON] =
-            g_w_remove_neuron;
-    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::ADD_CONNECTION] =
-            g_w_add_connection;
-    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::REMOVE_CONNECTION] =
-            g_w_remove_connection;
-    g_ts.net_change_op_weights[(size_t)tante::NetChangeOp::MOVE_CONNECTION] =
-            g_w_move_connection;
+    g_ts.max_op_weight = g_max_op_weight;
+    g_ts.op_weights[tante::Operation::ADD_NEURON] = g_op_w_add_neuron;
+    g_ts.op_weights[tante::Operation::RM_NEURON] = g_op_w_rm_neuron;
+    g_ts.op_weights[tante::Operation::ADD_CONNECTION] = g_op_w_add_connection;
+    g_ts.op_weights[tante::Operation::RM_CONNECTION] = g_op_w_rm_connection;
+    g_ts.op_weights[tante::Operation::MV_CONNECTION] = g_op_w_move_connection;
 }
 
 int main()

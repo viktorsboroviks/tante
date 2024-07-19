@@ -140,7 +140,7 @@ public:
         (void)rnd01;
     }
 
-    virtual void change(const std::function<double(void)> &rnd01)
+    virtual void apply_operation(const std::function<double(void)> &rnd01)
     {
         // TODO: add
         (void)rnd01;

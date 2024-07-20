@@ -45,24 +45,45 @@ private:
     grafiins::DAG<grafiins::Vertex, grafiins::Edge> _g;
     std::vector<size_t> _inputs_i;
     std::vector<size_t> _outputs_i;
-    std::vector<size_t> _neurons_i;
-    //    std::queue<size_t> _unallocated_neurons_i;
+    // for unallocated values use -1
+    std::vector<int> _neurons_i;
+    std::queue<size_t> _unallocated_neurons_i;
+    size_t n_neurons;
 
     void _add_neuron(const std::function<double(void)> &rnd01)
     {
-        //        int vi = _g.add_vertex(grafiins::Vertex(std::to_string(i)));
-        //        assert(vi >= 0);
-        //        _inputs_i[i] = vi;
-        std::cout << "debug: add neuron" << std::endl;
-        // TODO: implement
         (void)rnd01;
+        std::cout << "debug: add neuron" << std::endl;
+
+        size_t i;
+        if (!_unallocated_neurons_i.empty()) {
+            i = _unallocated_neurons_i.front();
+            _unallocated_neurons_i.pop();
+        }
+        else {
+            i = _neurons_i.size();
+            _neurons.push_back(0);
+        }
+        _neurons[i] = _g.add_vertex(grafiins::Vertex("n" + std::to_string(i)));
+        assert(vi >= 0);
+
+        n_neurons++;
     }
 
     void _rm_neuron(const std::function<double(void)> &rnd01)
     {
         std::cout << "debug: rm neuron" << std::endl;
-        // TODO: implement
-        (void)rnd01;
+
+        size_t i;
+        do {
+            i = rnd01() * _neurons_i.size();
+        } while (_neurons_i[i] != -1);
+
+        _g.remove_vertex(_neurons_i[i]);
+        _neurons_i[i] = -1;
+        _unallocated_neurons_i.push(i);
+
+        n_neurons--;
     }
 
     void _add_connection(const std::function<double(void)> &rnd01)

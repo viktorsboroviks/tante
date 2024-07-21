@@ -15,6 +15,7 @@ enum Operation {
     RM_CONNECTION,
     MV_CONNECTION_SRC,
     MV_CONNECTION_DST,
+    RND_CONNECTION_W,
     N_OPS,
 };
 
@@ -34,11 +35,33 @@ struct Neuron {
 
     ActivationF activation_f;
     double bias;
+    size_t graph_i;
+
+    Neuron(size_t i) :
+        graph_i(i)
+    {
+    }
 };
+
+inline bool operator<(const Neuron &lhs, const Neuron &rhs)
+{
+    return lhs.graph_i < rhs.graph_i;
+}
 
 struct Connection {
     double weight;
+    size_t graph_i;
+
+    Connection(size_t i) :
+        graph_i(i)
+    {
+    }
 };
+
+inline bool operator<(const Connection &lhs, const Connection &rhs)
+{
+    return lhs.graph_i < rhs.graph_i;
+}
 
 class Network {
 private:
@@ -46,7 +69,8 @@ private:
     grafiins::DAG<grafiins::Vertex, grafiins::Edge> _g;
     std::set<size_t> _inputs_i;
     std::set<size_t> _outputs_i;
-    std::set<size_t> _neurons_i;
+    std::set<Neuron> _neurons;
+    std::set<Connection> _connections;
 
     bool _add_neuron(const std::function<double(void)> &rnd01)
     {
@@ -54,16 +78,16 @@ private:
         std::cout << "debug: adding neuron..." << std::endl;
 
         assert(_settings.max_n_neurons > 0);
-        if (_neurons_i.size() == _settings.max_n_neurons) {
+        if (_neurons.size() == _settings.max_n_neurons) {
             return false;
         }
-        assert(_neurons_i.size() < _settings.max_n_neurons);
+        assert(_neurons.size() < _settings.max_n_neurons);
 
         const int vi = _g.add_vertex(grafiins::Vertex());
         assert(vi >= 0);
         auto *v = _g.get_vertex(vi);
         v->label = "n" + std::to_string(vi);
-        _neurons_i.insert(vi);
+        _neurons.insert(Neuron(vi));
 
         std::cout << "debug: added neuron " << v->label << std::endl;
         return true;
@@ -72,23 +96,30 @@ private:
     bool _rm_neuron(const std::function<double(void)> &rnd01)
     {
         std::cout << "debug: removing neuron..." << std::endl;
-        if (_neurons_i.empty()) {
+        if (_neurons.empty()) {
             return false;
         }
 
-        const size_t vi_i = rnd01() * _neurons_i.size();
-        std::set<size_t>::iterator it = _neurons_i.begin();
+        const size_t vi_i = rnd01() * _neurons.size();
+        std::set<Neuron>::iterator it = _neurons.begin();
         std::advance(it, vi_i);
-        const size_t vi = *it;
-        assert(_neurons_i.contains(vi));
+        const Neuron n = *it;
+        const size_t vi = n.graph_i;
         assert(!_inputs_i.contains(vi));
         assert(!_outputs_i.contains(vi));
 
         const auto *v = _g.get_vertex(vi);
         assert(v != nullptr);
-        std::cout << "debug: removed neuron " << v->label << std::endl;
+        const std::string v_label = v->label;
+
         _g.remove_vertex(vi);
-        _neurons_i.erase(vi);
+#ifndef NDEBUG
+        const size_t n_neurons = _neurons.size();
+#endif
+        _neurons.erase(n);
+        assert(_neurons.size() == n_neurons - 1);
+
+        std::cout << "debug: removed neuron " << v_label << std::endl;
         return true;
     }
 
@@ -96,6 +127,7 @@ private:
     {
         std::cout << "debug: adding connection..." << std::endl;
 
+        // TODO: fix here
         const auto all_vi = _g.get_vertices_i();
         size_t src_vi;
         size_t dst_vi;
@@ -117,6 +149,7 @@ private:
         auto *e = _g.get_edge(ei);
         e->label = "e" + std::to_string(ei) + ":" + v_src->label + "->" +
                    v_dst->label;
+        _connections.insert(Connection(ei));
 
         std::cout << "debug: added connection " << e->label << std::endl;
         return true;
@@ -125,84 +158,81 @@ private:
     bool _rm_connection(const std::function<double(void)> &rnd01)
     {
         std::cout << "debug: removing connection..." << std::endl;
-        const auto all_ei = _g.get_edges_i();
-        if (all_ei.empty()) {
+        if (_connections.empty()) {
             return false;
         }
 
-        const size_t ei_i = rnd01() * all_ei.size();
-        const size_t ei = all_ei[ei_i];
+        const size_t ei_i = rnd01() * _connections.size();
+        std::set<Connection>::iterator it = _connections.begin();
+        std::advance(it, ei_i);
+        const Connection c = *it;
+        const size_t ei = c.graph_i;
 
         const auto *e = _g.get_edge(ei);
         assert(e != nullptr);
-        std::cout << "debug: removed connection " << e->label << std::endl;
+        const std::string e_label = e->label;
+
         _g.remove_edge(ei);
+#ifndef NDEBUG
+        size_t n_connections = _connections.size();
+#endif
+        _connections.erase(c);
+        assert(_connections.size() == n_connections - 1);
+
+        std::cout << "debug: removed connection " << e_label << std::endl;
         return true;
     }
 
-    bool _mv_connection_src(const std::function<double(void)> &rnd01)
+    bool _mv_connection(const std::function<double(void)> &rnd01,
+                        const bool move_src = false,
+                        const bool move_dst = false)
     {
-        std::cout << "debug: moving connection src..." << std::endl;
-        const auto all_ei = _g.get_edges_i();
-        if (all_ei.empty()) {
+        assert(move_src || move_dst);
+
+        std::cout << "debug: moving connection..." << std::endl;
+        if (_connections.empty()) {
             return false;
         }
 
-        const size_t ei_i = rnd01() * all_ei.size();
-        const size_t ei = all_ei[ei_i];
+        const size_t ei_i = rnd01() * _connections.size();
+        std::set<Connection>::iterator it = _connections.begin();
+        std::advance(it, ei_i);
+        const Connection c = *it;
+        const size_t ei = c.graph_i;
 
         const auto all_vi = _g.get_vertices_i();
-        size_t src_vi;
-        do {
-            const size_t src_vi_i = rnd01() * all_vi.size();
-            src_vi = all_vi[src_vi_i];
-        } while (_outputs_i.contains(src_vi));
-
         auto e = *_g.get_edge(ei);
-        if (src_vi == e.src_vertex_i) {
-            return false;
+        size_t src_vi;
+        if (move_src) {
+            do {
+                const size_t src_vi_i = rnd01() * all_vi.size();
+                src_vi = all_vi[src_vi_i];
+            } while (_outputs_i.contains(src_vi));
+
+            if (src_vi == e.src_vertex_i) {
+                return false;
+            }
+        }
+        else {
+            src_vi = e.src_vertex_i;
+        }
+
+        size_t dst_vi;
+        if (move_dst) {
+            do {
+                const size_t dst_vi_i = rnd01() * all_vi.size();
+                dst_vi = all_vi[dst_vi_i];
+            } while (_outputs_i.contains(dst_vi));
+
+            if (dst_vi == e.dst_vertex_i) {
+                return false;
+            }
+        }
+        else {
+            dst_vi = e.dst_vertex_i;
         }
 
         e.src_vertex_i = src_vi;
-        const int new_ei = _g.add_edge(e);
-        if (new_ei < 0) {
-            return false;
-        }
-
-        auto *v_src = _g.get_vertex(e.src_vertex_i);
-        auto *v_dst = _g.get_vertex(e.dst_vertex_i);
-        e.label = "e" + std::to_string(new_ei) + ":" + v_src->label + "->" +
-                  v_dst->label;
-
-        _g.remove_edge(ei);
-
-        std::cout << "debug: moved connection src " << e.label << std::endl;
-        return true;
-    }
-
-    bool _mv_connection_dst(const std::function<double(void)> &rnd01)
-    {
-        std::cout << "debug: moving connection dst..." << std::endl;
-        const auto all_ei = _g.get_edges_i();
-        if (all_ei.empty()) {
-            return false;
-        }
-
-        const size_t ei_i = rnd01() * all_ei.size();
-        const size_t ei = all_ei[ei_i];
-
-        const auto all_vi = _g.get_vertices_i();
-        size_t dst_vi;
-        do {
-            const size_t dst_vi_i = rnd01() * all_vi.size();
-            dst_vi = all_vi[dst_vi_i];
-        } while (_inputs_i.contains(dst_vi));
-
-        auto e = *_g.get_edge(ei);
-        if (dst_vi == e.dst_vertex_i) {
-            return false;
-        }
-
         e.dst_vertex_i = dst_vi;
         const int new_ei = _g.add_edge(e);
         if (new_ei < 0) {
@@ -215,8 +245,36 @@ private:
                   v_dst->label;
 
         _g.remove_edge(ei);
+#ifndef NDEBUG
+        size_t n_connections = _connections.size();
+#endif
+        _connections.erase(c);
+        assert(_connections.size() == n_connections - 1);
 
-        std::cout << "debug: moved connection dst " << e.label << std::endl;
+        Connection new_c = c;
+        new_c.graph_i = new_ei;
+        _connections.insert(new_c);
+        assert(_connections.size() == n_connections);
+
+        std::cout << "debug: moved connection " << e.label << std::endl;
+        return true;
+    }
+
+    bool _mv_connection_src(const std::function<double(void)> &rnd01)
+    {
+        return _mv_connection(rnd01, true, false);
+    }
+
+    bool _mv_connection_dst(const std::function<double(void)> &rnd01)
+    {
+        return _mv_connection(rnd01, false, true);
+    }
+
+    bool _rnd_connection_w(const std::function<double(void)> &rnd01)
+    {
+        (void)rnd01;
+
+        std::cout << "debug: randomizing weight..." << std::endl;
         return true;
     }
 
@@ -237,6 +295,7 @@ private:
                 case Operation::RM_CONNECTION:
                 case Operation::MV_CONNECTION_SRC:
                 case Operation::MV_CONNECTION_DST:
+                case Operation::RND_CONNECTION_W:
                     break;
                 default:
                     // this should never happen
@@ -269,23 +328,35 @@ private:
     {
         assert(_inputs_i.size() == _settings.n_inputs);
         assert(_outputs_i.size() == _settings.n_outputs);
-        assert(_neurons_i.size() <= _settings.max_n_neurons);
+        assert(_neurons.size() <= _settings.max_n_neurons);
 
 #ifndef NDEBUG
         for (size_t i : _inputs_i) {
             assert(_g.get_vertex(i) != nullptr);
             assert(!_outputs_i.contains(i));
-            assert(!_neurons_i.contains(i));
+            bool found = false;
+            for (auto n : _neurons) {
+                if (n.graph_i == i) {
+                    found = true;
+                }
+            }
+            assert(!found);
         }
         for (size_t i : _outputs_i) {
             assert(_g.get_vertex(i) != nullptr);
             assert(!_inputs_i.contains(i));
-            assert(!_neurons_i.contains(i));
+            bool found = false;
+            for (auto n : _neurons) {
+                if (n.graph_i == i) {
+                    found = true;
+                }
+            }
+            assert(!found);
         }
-        for (size_t i : _neurons_i) {
-            assert(_g.get_vertex(i) != nullptr);
-            assert(!_inputs_i.contains(i));
-            assert(!_outputs_i.contains(i));
+        for (auto &n : _neurons) {
+            assert(_g.get_vertex(n.graph_i) != nullptr);
+            assert(!_inputs_i.contains(n.graph_i));
+            assert(!_outputs_i.contains(n.graph_i));
         }
 #endif
 
@@ -380,6 +451,9 @@ public:
                     break;
                 case Operation::MV_CONNECTION_DST:
                     op_applied = _mv_connection_dst(rnd01);
+                    break;
+                case Operation::RND_CONNECTION_W:
+                    op_applied = _rnd_connection_w(rnd01);
                     break;
                 default:
                     // this should never happen

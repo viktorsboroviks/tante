@@ -12,6 +12,7 @@ const size_t g_op_w_add_connection = 1;
 const size_t g_op_w_rm_connection = 1;
 const size_t g_op_w_mv_connection_src = 1;
 const size_t g_op_w_mv_connection_dst = 1;
+const size_t g_op_w_rnd_connection_w = 1;
 
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
@@ -65,6 +66,8 @@ void init_global_vars()
             g_op_w_mv_connection_src;
     g_ts.op_weights[tante::Operation::MV_CONNECTION_DST] =
             g_op_w_mv_connection_dst;
+    g_ts.op_weights[tante::Operation::RND_CONNECTION_W] =
+            g_op_w_rnd_connection_w;
 }
 
 int main()

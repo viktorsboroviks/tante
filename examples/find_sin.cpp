@@ -10,7 +10,8 @@ const size_t g_op_w_add_neuron = 1;
 const size_t g_op_w_rm_neuron = 1;
 const size_t g_op_w_add_connection = 1;
 const size_t g_op_w_rm_connection = 1;
-const size_t g_op_w_move_connection = 1;
+const size_t g_op_w_mv_connection_src = 1;
+const size_t g_op_w_mv_connection_dst = 1;
 
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
@@ -60,7 +61,10 @@ void init_global_vars()
     g_ts.op_weights[tante::Operation::RM_NEURON] = g_op_w_rm_neuron;
     g_ts.op_weights[tante::Operation::ADD_CONNECTION] = g_op_w_add_connection;
     g_ts.op_weights[tante::Operation::RM_CONNECTION] = g_op_w_rm_connection;
-    g_ts.op_weights[tante::Operation::MV_CONNECTION] = g_op_w_move_connection;
+    g_ts.op_weights[tante::Operation::MV_CONNECTION_SRC] =
+            g_op_w_mv_connection_src;
+    g_ts.op_weights[tante::Operation::MV_CONNECTION_DST] =
+            g_op_w_mv_connection_dst;
 }
 
 int main()

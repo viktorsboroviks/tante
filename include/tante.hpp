@@ -13,7 +13,8 @@ enum Operation {
     RM_NEURON,
     ADD_CONNECTION,
     RM_CONNECTION,
-    MV_CONNECTION,
+    MV_CONNECTION_SRC,
+    MV_CONNECTION_DST,
     N_OPS,
 };
 
@@ -139,12 +140,84 @@ private:
         return true;
     }
 
-    bool _mv_connection(const std::function<double(void)> &rnd01)
+    bool _mv_connection_src(const std::function<double(void)> &rnd01)
     {
-        std::cout << "debug: mv connection" << std::endl;
-        // TODO: implement
-        (void)rnd01;
-        return false;
+        std::cout << "debug: moving connection src..." << std::endl;
+        const auto all_ei = _g.get_edges_i();
+        if (all_ei.empty()) {
+            return false;
+        }
+
+        const size_t ei_i = rnd01() * all_ei.size();
+        const size_t ei = all_ei[ei_i];
+
+        const auto all_vi = _g.get_vertices_i();
+        size_t src_vi;
+        do {
+            const size_t src_vi_i = rnd01() * all_vi.size();
+            src_vi = all_vi[src_vi_i];
+        } while (_outputs_i.contains(src_vi));
+
+        auto e = *_g.get_edge(ei);
+        if (src_vi == e.src_vertex_i) {
+            return false;
+        }
+
+        e.src_vertex_i = src_vi;
+        const int new_ei = _g.add_edge(e);
+        if (new_ei < 0) {
+            return false;
+        }
+
+        auto *v_src = _g.get_vertex(e.src_vertex_i);
+        auto *v_dst = _g.get_vertex(e.dst_vertex_i);
+        e.label = "e" + std::to_string(new_ei) + ":" + v_src->label + "->" +
+                  v_dst->label;
+
+        _g.remove_edge(ei);
+
+        std::cout << "debug: moved connection src " << e.label << std::endl;
+        return true;
+    }
+
+    bool _mv_connection_dst(const std::function<double(void)> &rnd01)
+    {
+        std::cout << "debug: moving connection dst..." << std::endl;
+        const auto all_ei = _g.get_edges_i();
+        if (all_ei.empty()) {
+            return false;
+        }
+
+        const size_t ei_i = rnd01() * all_ei.size();
+        const size_t ei = all_ei[ei_i];
+
+        const auto all_vi = _g.get_vertices_i();
+        size_t dst_vi;
+        do {
+            const size_t dst_vi_i = rnd01() * all_vi.size();
+            dst_vi = all_vi[dst_vi_i];
+        } while (_inputs_i.contains(dst_vi));
+
+        auto e = *_g.get_edge(ei);
+        if (dst_vi == e.dst_vertex_i) {
+            return false;
+        }
+
+        e.dst_vertex_i = dst_vi;
+        const int new_ei = _g.add_edge(e);
+        if (new_ei < 0) {
+            return false;
+        }
+
+        auto *v_src = _g.get_vertex(e.src_vertex_i);
+        auto *v_dst = _g.get_vertex(e.dst_vertex_i);
+        e.label = "e" + std::to_string(new_ei) + ":" + v_src->label + "->" +
+                  v_dst->label;
+
+        _g.remove_edge(ei);
+
+        std::cout << "debug: moved connection dst " << e.label << std::endl;
+        return true;
     }
 
     size_t _get_random_operation(const std::function<double(void)> &rnd01)
@@ -162,7 +235,8 @@ private:
                 case Operation::RM_NEURON:
                 case Operation::ADD_CONNECTION:
                 case Operation::RM_CONNECTION:
-                case Operation::MV_CONNECTION:
+                case Operation::MV_CONNECTION_SRC:
+                case Operation::MV_CONNECTION_DST:
                     break;
                 default:
                     // this should never happen
@@ -301,8 +375,11 @@ public:
                 case Operation::RM_CONNECTION:
                     op_applied = _rm_connection(rnd01);
                     break;
-                case Operation::MV_CONNECTION:
-                    op_applied = _mv_connection(rnd01);
+                case Operation::MV_CONNECTION_SRC:
+                    op_applied = _mv_connection_src(rnd01);
+                    break;
+                case Operation::MV_CONNECTION_DST:
+                    op_applied = _mv_connection_dst(rnd01);
                     break;
                 default:
                     // this should never happen

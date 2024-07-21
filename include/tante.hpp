@@ -43,68 +43,108 @@ class Network {
 private:
     Settings _settings;
     grafiins::DAG<grafiins::Vertex, grafiins::Edge> _g;
-    std::vector<size_t> _inputs_i;
-    std::vector<size_t> _outputs_i;
-    // for unallocated values use -1
-    std::vector<int> _neurons_i;
-    std::queue<size_t> _unallocated_neurons_i;
-    size_t n_neurons;
+    std::set<size_t> _inputs_i;
+    std::set<size_t> _outputs_i;
+    std::set<size_t> _neurons_i;
 
-    void _add_neuron(const std::function<double(void)> &rnd01)
+    bool _add_neuron(const std::function<double(void)> &rnd01)
     {
         (void)rnd01;
-        std::cout << "debug: add neuron" << std::endl;
+        std::cout << "debug: adding neuron..." << std::endl;
 
-        size_t i;
-        if (!_unallocated_neurons_i.empty()) {
-            i = _unallocated_neurons_i.front();
-            _unallocated_neurons_i.pop();
+        assert(_settings.max_n_neurons > 0);
+        if (_neurons_i.size() == _settings.max_n_neurons) {
+            return false;
         }
-        else {
-            i = _neurons_i.size();
-            _neurons.push_back(0);
-        }
-        _neurons[i] = _g.add_vertex(grafiins::Vertex("n" + std::to_string(i)));
+        assert(_neurons_i.size() < _settings.max_n_neurons);
+
+        const int vi = _g.add_vertex(grafiins::Vertex());
         assert(vi >= 0);
+        auto *v = _g.get_vertex(vi);
+        v->label = "n" + std::to_string(vi);
+        _neurons_i.insert(vi);
 
-        n_neurons++;
+        std::cout << "debug: added neuron " << v->label << std::endl;
+        return true;
     }
 
-    void _rm_neuron(const std::function<double(void)> &rnd01)
+    bool _rm_neuron(const std::function<double(void)> &rnd01)
     {
-        std::cout << "debug: rm neuron" << std::endl;
+        std::cout << "debug: removing neuron..." << std::endl;
+        if (_neurons_i.empty()) {
+            return false;
+        }
 
-        size_t i;
+        const size_t vi_i = rnd01() * _neurons_i.size();
+        std::set<size_t>::iterator it = _neurons_i.begin();
+        std::advance(it, vi_i);
+        const size_t vi = *it;
+        assert(_neurons_i.contains(vi));
+        assert(!_inputs_i.contains(vi));
+        assert(!_outputs_i.contains(vi));
+
+        const auto *v = _g.get_vertex(vi);
+        assert(v != nullptr);
+        std::cout << "debug: removed neuron " << v->label << std::endl;
+        _g.remove_vertex(vi);
+        _neurons_i.erase(vi);
+        return true;
+    }
+
+    bool _add_connection(const std::function<double(void)> &rnd01)
+    {
+        std::cout << "debug: adding connection..." << std::endl;
+
+        const auto all_vi = _g.get_vertices_i();
+        size_t src_vi;
+        size_t dst_vi;
         do {
-            i = rnd01() * _neurons_i.size();
-        } while (_neurons_i[i] != -1);
+            const size_t src_vi_i = rnd01() * all_vi.size();
+            src_vi = all_vi[src_vi_i];
+            const size_t dst_vi_i = rnd01() * all_vi.size();
+            dst_vi = all_vi[dst_vi_i];
+        } while (_outputs_i.contains(src_vi) || _inputs_i.contains(dst_vi) ||
+                 dst_vi == src_vi);
 
-        _g.remove_vertex(_neurons_i[i]);
-        _neurons_i[i] = -1;
-        _unallocated_neurons_i.push(i);
+        const int ei = _g.add_edge(grafiins::Edge(src_vi, dst_vi));
+        if (ei < 0) {
+            return false;
+        }
 
-        n_neurons--;
+        auto *v_src = _g.get_vertex(src_vi);
+        auto *v_dst = _g.get_vertex(dst_vi);
+        auto *e = _g.get_edge(ei);
+        e->label = "e" + std::to_string(ei) + ":" + v_src->label + "->" +
+                   v_dst->label;
+
+        std::cout << "debug: added connection " << e->label << std::endl;
+        return true;
     }
 
-    void _add_connection(const std::function<double(void)> &rnd01)
+    bool _rm_connection(const std::function<double(void)> &rnd01)
     {
-        std::cout << "debug: add connection" << std::endl;
-        // TODO: implement
-        (void)rnd01;
+        std::cout << "debug: removing connection..." << std::endl;
+        const auto all_ei = _g.get_edges_i();
+        if (all_ei.empty()) {
+            return false;
+        }
+
+        const size_t ei_i = rnd01() * all_ei.size();
+        const size_t ei = all_ei[ei_i];
+
+        const auto *e = _g.get_edge(ei);
+        assert(e != nullptr);
+        std::cout << "debug: removed connection " << e->label << std::endl;
+        _g.remove_edge(ei);
+        return true;
     }
 
-    void _rm_connection(const std::function<double(void)> &rnd01)
-    {
-        std::cout << "debug: rm connection" << std::endl;
-        // TODO: implement
-        (void)rnd01;
-    }
-
-    void _mv_connection(const std::function<double(void)> &rnd01)
+    bool _mv_connection(const std::function<double(void)> &rnd01)
     {
         std::cout << "debug: mv connection" << std::endl;
         // TODO: implement
         (void)rnd01;
+        return false;
     }
 
     size_t _get_random_operation(const std::function<double(void)> &rnd01)
@@ -157,41 +197,34 @@ private:
         assert(_outputs_i.size() == _settings.n_outputs);
         assert(_neurons_i.size() <= _settings.max_n_neurons);
 
-        std::set<size_t> set_inputs_i{_inputs_i.begin(), _inputs_i.end()};
-        std::set<size_t> set_outputs_i{_outputs_i.begin(), _outputs_i.end()};
-        std::set<size_t> set_neurons_i{_neurons_i.begin(), _neurons_i.end()};
 #ifndef NDEBUG
-        assert(set_inputs_i.size() == _settings.n_inputs);
-        assert(set_outputs_i.size() == _settings.n_outputs);
-        assert(set_neurons_i.size() <= _settings.max_n_neurons);
-
-        for (size_t i : set_inputs_i) {
+        for (size_t i : _inputs_i) {
             assert(_g.get_vertex(i) != nullptr);
-            assert(!set_outputs_i.contains(i));
-            assert(!set_neurons_i.contains(i));
+            assert(!_outputs_i.contains(i));
+            assert(!_neurons_i.contains(i));
         }
-        for (size_t i : set_outputs_i) {
+        for (size_t i : _outputs_i) {
             assert(_g.get_vertex(i) != nullptr);
-            assert(!set_inputs_i.contains(i));
-            assert(!set_neurons_i.contains(i));
+            assert(!_inputs_i.contains(i));
+            assert(!_neurons_i.contains(i));
         }
-        for (size_t i : set_neurons_i) {
+        for (size_t i : _neurons_i) {
             assert(_g.get_vertex(i) != nullptr);
-            assert(!set_inputs_i.contains(i));
-            assert(!set_outputs_i.contains(i));
+            assert(!_inputs_i.contains(i));
+            assert(!_outputs_i.contains(i));
         }
 #endif
 
         // every input has a connection to at least one output
-        for (size_t i : set_inputs_i) {
-            if (!_g.are_connected_any({i}, set_outputs_i)) {
+        for (size_t i : _inputs_i) {
+            if (!_g.are_connected_any({i}, _outputs_i)) {
                 return false;
             }
         }
 
         // every output has a connection to at least one input
-        for (size_t i : set_outputs_i) {
-            if (!_g.are_connected_any(set_inputs_i, {i})) {
+        for (size_t i : _outputs_i) {
+            if (!_g.are_connected_any(_inputs_i, {i})) {
                 return false;
             }
         }
@@ -226,22 +259,25 @@ public:
     {
         // add input probes
         assert(_inputs_i.size() == 0);
-        _inputs_i.resize(_settings.n_inputs);
         for (size_t i = 0; i < _settings.n_inputs; i++) {
-            int vi = _g.add_vertex(grafiins::Vertex("in" + std::to_string(i)));
+            const int vi = _g.add_vertex(grafiins::Vertex());
             assert(vi >= 0);
-            _inputs_i[i] = vi;
+            auto *v = _g.get_vertex(vi);
+            v->label = "in" + std::to_string(vi);
+            _inputs_i.insert(vi);
         }
+        assert(_inputs_i.size() == _settings.n_inputs);
 
         // add output probes
         assert(_outputs_i.size() == 0);
-        _outputs_i.resize(_settings.n_outputs);
         for (size_t i = 0; i < _settings.n_outputs; i++) {
-            int vi =
-                    _g.add_vertex(grafiins::Vertex("out" + std::to_string(i)));
+            const int vi = _g.add_vertex(grafiins::Vertex());
             assert(vi >= 0);
-            _outputs_i[i] = vi;
+            auto *v = _g.get_vertex(vi);
+            v->label = "out" + std::to_string(vi);
+            _outputs_i.insert(vi);
         }
+        assert(_outputs_i.size() == _settings.n_outputs);
 
         // restore network (necessary for energy calculation)
         _restore(rnd01);
@@ -250,27 +286,30 @@ public:
     virtual void apply_random_operation(
             const std::function<double(void)> &rnd01)
     {
-        switch (_get_random_operation(rnd01)) {
-            case Operation::ADD_NEURON:
-                _add_neuron(rnd01);
-                break;
-            case Operation::RM_NEURON:
-                _rm_neuron(rnd01);
-                break;
-            case Operation::ADD_CONNECTION:
-                _add_connection(rnd01);
-                break;
-            case Operation::RM_CONNECTION:
-                _rm_connection(rnd01);
-                break;
-            case Operation::MV_CONNECTION:
-                _mv_connection(rnd01);
-                break;
-            default:
-                // this should never happen
-                assert(false);
-                break;
-        }
+        bool op_applied = false;
+        do {
+            switch (_get_random_operation(rnd01)) {
+                case Operation::ADD_NEURON:
+                    op_applied = _add_neuron(rnd01);
+                    break;
+                case Operation::RM_NEURON:
+                    op_applied = _rm_neuron(rnd01);
+                    break;
+                case Operation::ADD_CONNECTION:
+                    op_applied = _add_connection(rnd01);
+                    break;
+                case Operation::RM_CONNECTION:
+                    op_applied = _rm_connection(rnd01);
+                    break;
+                case Operation::MV_CONNECTION:
+                    op_applied = _mv_connection(rnd01);
+                    break;
+                default:
+                    // this should never happen
+                    assert(false);
+                    break;
+            }
+        } while (!op_applied);
     }
 };
 

@@ -239,6 +239,10 @@ private:
             dst_vi = e.dst_vertex_i;
         }
 
+        if (src_vi == dst_vi) {
+            return false;
+        }
+
         e.src_vertex_i = src_vi;
         e.dst_vertex_i = dst_vi;
         const int new_ei = _g.add_edge(e);
@@ -255,11 +259,12 @@ private:
 #ifndef NDEBUG
         size_t n_connections = _connections.size();
 #endif
+        Connection new_c = c;
+        new_c.graph_i = new_ei;
+
         _connections.erase(c);
         assert(_connections.size() == n_connections - 1);
 
-        Connection new_c = c;
-        new_c.graph_i = new_ei;
         _connections.insert(new_c);
         assert(_connections.size() == n_connections);
 

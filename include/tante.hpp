@@ -112,7 +112,14 @@ private:
         assert(v != nullptr);
         const std::string v_label = v->label;
 
+        // vertex removal also removes all adjusted edges
         _g.remove_vertex(vi);
+        for (Connection c : _connections) {
+            if (_g.get_edge(c.graph_i) == nullptr) {
+                _connections.erase(c);
+            }
+        }
+
 #ifndef NDEBUG
         const size_t n_neurons = _neurons.size();
 #endif

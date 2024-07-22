@@ -8,7 +8,7 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout dev-v1.2
+	cd grafiins; git checkout v1.2
 
 examples: \
 	find_sin.o

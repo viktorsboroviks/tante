@@ -10,7 +10,7 @@
 
 const size_t N_RUNS = 1000000;
 
-typedef std::function<double(int)> run_function_t;
+typedef std::function<double(double)> run_function_t;
 
 double run_tanh(double in)
 {

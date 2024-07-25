@@ -6,7 +6,9 @@ const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
 const size_t g_max_n_neurons = 5;
 const size_t g_max_op_weight = 1;
-const size_t g_op_w_add_neuron = 1;
+const size_t g_op_w_add_neuron_sigmoid = 1;
+const size_t g_op_w_add_neuron_tanh = 1;
+const size_t g_op_w_add_neuron_relu = 1;
 const size_t g_op_w_rm_neuron = 1;
 const size_t g_op_w_add_connection = 1;
 const size_t g_op_w_rm_connection = 1;
@@ -58,7 +60,12 @@ void init_global_vars()
     g_ts.n_outputs = g_n_outputs;
     g_ts.max_n_neurons = g_max_n_neurons;
     g_ts.max_op_weight = g_max_op_weight;
-    g_ts.op_weights[tante::Operation::ADD_NEURON] = g_op_w_add_neuron;
+    g_ts.op_weights[tante::Operation::ADD_NEURON_SIGMOID] =
+            g_op_w_add_neuron_sigmoid;
+    g_ts.op_weights[tante::Operation::ADD_NEURON_TANH] =
+            g_op_w_add_neuron_tanh;
+    g_ts.op_weights[tante::Operation::ADD_NEURON_RELU] =
+            g_op_w_add_neuron_relu;
     g_ts.op_weights[tante::Operation::RM_NEURON] = g_op_w_rm_neuron;
     g_ts.op_weights[tante::Operation::ADD_CONNECTION] = g_op_w_add_connection;
     g_ts.op_weights[tante::Operation::RM_CONNECTION] = g_op_w_rm_connection;

@@ -9,7 +9,9 @@
 namespace tante {
 
 enum Operation {
-    ADD_NEURON = 0,
+    ADD_NEURON_SIGMOID = 0,
+    ADD_NEURON_TANH,
+    ADD_NEURON_RELU,
     RM_NEURON,
     ADD_CONNECTION,
     RM_CONNECTION,
@@ -28,17 +30,30 @@ struct Settings {
 };
 
 struct Neuron {
-    enum ActivationF {
-        SIGMOID = 0,
-        N_AFS
-    };
+public:
+    typedef std::function<double(double)> ActivationF;
+    static double af_tanh(double in)
+    {
+        return std::tanh(in);
+    }
 
-    ActivationF activation_f;
+    static double af_sigmoid(double in)
+    {
+        return 1 / (1 + std::exp(-in));
+    }
+
+    static double af_relu(double in)
+    {
+        return std::max(0.0, in);
+    }
+
+    const size_t graph_i;
+    const ActivationF activation_f;
     double bias;
-    size_t graph_i;
 
-    Neuron(size_t i) :
-        graph_i(i)
+    Neuron(size_t i, ActivationF af) :
+        graph_i(i),
+        activation_f(af)
     {
     }
 };
@@ -72,7 +87,8 @@ private:
     std::set<Neuron> _neurons;
     std::set<Connection> _connections;
 
-    bool _add_neuron(const std::function<double(void)> &rnd01)
+    bool _add_neuron(const std::function<double(void)> &rnd01,
+                     Neuron::ActivationF af)
     {
         (void)rnd01;
         std::cout << "debug: adding neuron..." << std::endl;
@@ -87,7 +103,7 @@ private:
         assert(vi >= 0);
         auto *v = _g.get_vertex(vi);
         v->label = "n" + std::to_string(vi);
-        _neurons.insert(Neuron(vi));
+        _neurons.insert(Neuron(vi, af));
 
         std::cout << "debug: added neuron " << v->label << std::endl;
         return true;
@@ -284,9 +300,23 @@ private:
 
     bool _rnd_connection_w(const std::function<double(void)> &rnd01)
     {
+        std::cout << "debug: randomizing weight..." << std::endl;
         (void)rnd01;
 
-        std::cout << "debug: randomizing weight..." << std::endl;
+        //        const size_t ei_i = rnd01() * _connections.size();
+        //        std::set<Connection>::iterator it = _connections.begin();
+        //        std::advance(it, ei_i);
+        //        const Connection& c = it;
+        //        c->weight = rnd01() * ;
+        //
+        //        auto *e = _g.get_edge(ei);
+        //        e->label = "e" + std::to_string(ei) + ":" + v_src->label +
+        //        "->" +
+        //                   v_dst->label;
+        //        _connections.insert(Connection(ei));
+
+        //        std::cout << "debug: randomized weight " << e->label <<
+        //        std::endl;
         return true;
     }
 
@@ -301,7 +331,9 @@ private:
             op_value[i] = op_value_sum;
 #ifndef NDEBUG
             switch (i) {
-                case Operation::ADD_NEURON:
+                case Operation::ADD_NEURON_SIGMOID:
+                case Operation::ADD_NEURON_TANH:
+                case Operation::ADD_NEURON_RELU:
                 case Operation::RM_NEURON:
                 case Operation::ADD_CONNECTION:
                 case Operation::RM_CONNECTION:
@@ -446,8 +478,18 @@ public:
         bool op_applied = false;
         do {
             switch (_get_random_operation(rnd01)) {
-                case Operation::ADD_NEURON:
-                    op_applied = _add_neuron(rnd01);
+                case Operation::ADD_NEURON_SIGMOID:
+                    std::cout << "debug: adding neuron sigmoid..."
+                              << std::endl;
+                    op_applied = _add_neuron(rnd01, Neuron::af_sigmoid);
+                    break;
+                case Operation::ADD_NEURON_TANH:
+                    std::cout << "debug: adding neuron tanh..." << std::endl;
+                    op_applied = _add_neuron(rnd01, Neuron::af_tanh);
+                    break;
+                case Operation::ADD_NEURON_RELU:
+                    std::cout << "debug: adding neuron relu..." << std::endl;
+                    op_applied = _add_neuron(rnd01, Neuron::af_relu);
                     break;
                 case Operation::RM_NEURON:
                     op_applied = _rm_neuron(rnd01);

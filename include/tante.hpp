@@ -17,7 +17,8 @@ enum Operation {
     RM_CONNECTION,
     MV_CONNECTION_SRC,
     MV_CONNECTION_DST,
-    RND_CONNECTION_W,
+    STEP_WEIGHT,
+    STEP_BIAS,
     N_OPS,
 };
 
@@ -27,11 +28,25 @@ struct Settings {
     size_t max_n_neurons = 0;
     size_t max_op_weight = 100;
     size_t op_weights[Operation::N_OPS] = {0};
+    size_t min_weight_step = 1;
+    size_t max_weight_step = -1;
+    size_t min_bias_step = 1;
+    size_t max_bias_step = -1;
 };
 
-struct Neuron {
+class Neuron {
 public:
+    const size_t graph_i;
     typedef std::function<double(double)> ActivationF;
+    const ActivationF activation_f;
+    double bias = 0;
+
+    Neuron(size_t i, ActivationF af) :
+        graph_i(i),
+        activation_f(af)
+    {
+    }
+
     static double af_tanh(double in)
     {
         return std::tanh(in);
@@ -46,16 +61,6 @@ public:
     {
         return std::max(0.0, in);
     }
-
-    const size_t graph_i;
-    const ActivationF activation_f;
-    double bias;
-
-    Neuron(size_t i, ActivationF af) :
-        graph_i(i),
-        activation_f(af)
-    {
-    }
 };
 
 inline bool operator<(const Neuron &lhs, const Neuron &rhs)
@@ -63,9 +68,10 @@ inline bool operator<(const Neuron &lhs, const Neuron &rhs)
     return lhs.graph_i < rhs.graph_i;
 }
 
-struct Connection {
-    double weight;
+class Connection {
+public:
     size_t graph_i;
+    double weight = 0;
 
     Connection(size_t i) :
         graph_i(i)
@@ -86,6 +92,25 @@ private:
     std::set<size_t> _outputs_i;
     std::set<Neuron> _neurons;
     std::set<Connection> _connections;
+
+    const Neuron _get_rnd_neuron(const std::function<double(void)> &rnd01)
+    {
+        assert(!_neurons.empty());
+        const size_t vi_i = rnd01() * _neurons.size();
+        std::set<Neuron>::iterator it = _neurons.begin();
+        std::advance(it, vi_i);
+        return (*it);
+    }
+
+    const Connection _get_rnd_connection(
+            const std::function<double(void)> &rnd01)
+    {
+        assert(!_connections.empty());
+        const size_t ei_i = rnd01() * _connections.size();
+        std::set<Connection>::iterator it = _connections.begin();
+        std::advance(it, ei_i);
+        return (*it);
+    }
 
     bool _add_neuron(const std::function<double(void)> &rnd01,
                      Neuron::ActivationF af)
@@ -116,11 +141,8 @@ private:
             return false;
         }
 
-        const size_t vi_i = rnd01() * _neurons.size();
-        std::set<Neuron>::iterator it = _neurons.begin();
-        std::advance(it, vi_i);
-        const Neuron n = *it;
-        const size_t vi = n.graph_i;
+        const Neuron n = _get_rnd_neuron(rnd01);
+        const int vi = n.graph_i;
         assert(!_inputs_i.contains(vi));
         assert(!_outputs_i.contains(vi));
 
@@ -185,10 +207,7 @@ private:
             return false;
         }
 
-        const size_t ei_i = rnd01() * _connections.size();
-        std::set<Connection>::iterator it = _connections.begin();
-        std::advance(it, ei_i);
-        const Connection c = *it;
+        const Connection c = _get_rnd_connection(rnd01);
         const size_t ei = c.graph_i;
 
         const auto *e = _g.get_edge(ei);
@@ -217,10 +236,7 @@ private:
             return false;
         }
 
-        const size_t ei_i = rnd01() * _connections.size();
-        std::set<Connection>::iterator it = _connections.begin();
-        std::advance(it, ei_i);
-        const Connection c = *it;
+        const Connection c = _get_rnd_connection(rnd01);
         const size_t ei = c.graph_i;
 
         const auto all_vi = _g.get_vertices_i();
@@ -298,33 +314,61 @@ private:
         return _mv_connection(rnd01, false, true);
     }
 
-    bool _rnd_connection_w(const std::function<double(void)> &rnd01)
+    bool _step_weight(const std::function<double(void)> &rnd01)
     {
-        std::cout << "debug: randomizing weight..." << std::endl;
-        (void)rnd01;
+        std::cout << "debug: stepping weight..." << std::endl;
+        if (_connections.empty()) {
+            return false;
+        }
 
-        //        const size_t ei_i = rnd01() * _connections.size();
-        //        std::set<Connection>::iterator it = _connections.begin();
-        //        std::advance(it, ei_i);
-        //        const Connection& c = it;
-        //        c->weight = rnd01() * ;
-        //
-        //        auto *e = _g.get_edge(ei);
-        //        e->label = "e" + std::to_string(ei) + ":" + v_src->label +
-        //        "->" +
-        //                   v_dst->label;
-        //        _connections.insert(Connection(ei));
+        const Connection c_old = _get_rnd_connection(rnd01);
+        const double weight_step = (rnd01() * (_settings.max_weight_step -
+                                               _settings.min_weight_step)) +
+                                   _settings.min_weight_step;
+        assert(weight_step >= _settings.min_weight_step);
+        assert(weight_step <= _settings.max_weight_step);
 
-        //        std::cout << "debug: randomized weight " << e->label <<
-        //        std::endl;
+        Connection c_new = c_old;
+        c_new.weight += weight_step;
+        _connections.erase(c_old);
+        _connections.insert(c_new);
+
+        const std::string weight_step_sign = weight_step >= 0 ? "+" : "-";
+        std::cout << "debug: stepped weight to " << c_new.weight << "("
+                  << weight_step_sign << weight_step << ")" << std::endl;
         return true;
     }
 
-    size_t _get_random_operation(const std::function<double(void)> &rnd01)
+    bool _step_bias(const std::function<double(void)> &rnd01)
     {
-        std::vector<size_t> op_value;
+        std::cout << "debug: stepping bias..." << std::endl;
+        if (_neurons.empty()) {
+            return false;
+        }
+
+        const Neuron n_old = _get_rnd_neuron(rnd01);
+        const double bias_step = (rnd01() * (_settings.max_bias_step -
+                                             _settings.min_bias_step)) +
+                                 _settings.min_bias_step;
+        assert(bias_step >= _settings.min_bias_step);
+        assert(bias_step <= _settings.max_bias_step);
+
+        Neuron n_new = n_old;
+        n_new.bias += bias_step;
+        _neurons.erase(n_old);
+        _neurons.insert(n_new);
+
+        const std::string bias_step_sign = bias_step >= 0 ? "+" : "-";
+        std::cout << "debug: stepped bias to " << n_new.bias << "("
+                  << bias_step_sign << bias_step << ")" << std::endl;
+        return true;
+    }
+
+    int _get_random_operation(const std::function<double(void)> &rnd01)
+    {
+        std::vector<int> op_value;
         op_value.resize(Operation::N_OPS);
-        size_t op_value_sum = 0;
+        int op_value_sum = 0;
 
         for (size_t i = 0; i < op_value.size(); i++) {
             op_value_sum += _settings.op_weights[i];
@@ -339,7 +383,8 @@ private:
                 case Operation::RM_CONNECTION:
                 case Operation::MV_CONNECTION_SRC:
                 case Operation::MV_CONNECTION_DST:
-                case Operation::RND_CONNECTION_W:
+                case Operation::STEP_WEIGHT:
+                case Operation::STEP_BIAS:
                     break;
                 default:
                     // this should never happen
@@ -350,13 +395,13 @@ private:
         }
 
 #ifndef NDEBUG
-        size_t prev_value = 0;
-        for (size_t v : op_value) {
+        int prev_value = 0;
+        for (int v : op_value) {
             assert(v >= prev_value);
             prev_value = v;
         }
 #endif
-        const size_t rnd_value = rnd01() * op_value_sum;
+        const int rnd_value = rnd01() * op_value_sum;
         for (size_t i = 0; i < op_value.size(); i++) {
             if (rnd_value < op_value[i]) {
                 return i;
@@ -365,7 +410,7 @@ private:
 
         // this should never happen
         assert(false);
-        return 0;
+        return -1;
     }
 
     bool _is_operational()
@@ -386,6 +431,7 @@ private:
             }
             assert(!found);
         }
+
         for (size_t i : _outputs_i) {
             assert(_g.get_vertex(i) != nullptr);
             assert(!_inputs_i.contains(i));
@@ -506,8 +552,11 @@ public:
                 case Operation::MV_CONNECTION_DST:
                     op_applied = _mv_connection_dst(rnd01);
                     break;
-                case Operation::RND_CONNECTION_W:
-                    op_applied = _rnd_connection_w(rnd01);
+                case Operation::STEP_WEIGHT:
+                    op_applied = _step_weight(rnd01);
+                    break;
+                case Operation::STEP_BIAS:
+                    op_applied = _step_bias(rnd01);
                     break;
                 default:
                     // this should never happen

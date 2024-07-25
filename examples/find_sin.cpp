@@ -6,6 +6,11 @@ const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
 const size_t g_max_n_neurons = 5;
 const size_t g_max_op_weight = 1;
+const size_t g_min_weight_step = 1;
+const size_t g_max_weight_step = -1;
+const size_t g_min_bias_step = 1;
+const size_t g_max_bias_step = -1;
+
 const size_t g_op_w_add_neuron_sigmoid = 1;
 const size_t g_op_w_add_neuron_tanh = 1;
 const size_t g_op_w_add_neuron_relu = 1;
@@ -14,7 +19,8 @@ const size_t g_op_w_add_connection = 1;
 const size_t g_op_w_rm_connection = 1;
 const size_t g_op_w_mv_connection_src = 1;
 const size_t g_op_w_mv_connection_dst = 1;
-const size_t g_op_w_rnd_connection_w = 1;
+const size_t g_op_w_step_weight = 1;
+const size_t g_op_w_step_bias = 1;
 
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
@@ -60,6 +66,11 @@ void init_global_vars()
     g_ts.n_outputs = g_n_outputs;
     g_ts.max_n_neurons = g_max_n_neurons;
     g_ts.max_op_weight = g_max_op_weight;
+    g_ts.min_weight_step = g_min_weight_step;
+    g_ts.max_weight_step = g_max_weight_step;
+    g_ts.min_bias_step = g_min_bias_step;
+    g_ts.max_bias_step = g_max_bias_step;
+
     g_ts.op_weights[tante::Operation::ADD_NEURON_SIGMOID] =
             g_op_w_add_neuron_sigmoid;
     g_ts.op_weights[tante::Operation::ADD_NEURON_TANH] =
@@ -73,8 +84,8 @@ void init_global_vars()
             g_op_w_mv_connection_src;
     g_ts.op_weights[tante::Operation::MV_CONNECTION_DST] =
             g_op_w_mv_connection_dst;
-    g_ts.op_weights[tante::Operation::RND_CONNECTION_W] =
-            g_op_w_rnd_connection_w;
+    g_ts.op_weights[tante::Operation::STEP_WEIGHT] = g_op_w_step_weight;
+    g_ts.op_weights[tante::Operation::STEP_BIAS] = g_op_w_step_bias;
 }
 
 int main()

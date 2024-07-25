@@ -93,6 +93,50 @@ private:
     std::set<Neuron> _neurons;
     std::set<Connection> _connections;
 
+    const Neuron _get_neuron(size_t i)
+    {
+        assert(!_neurons.empty());
+
+        for (auto &n : _neurons) {
+            if (n.graph_i == i)
+                return n;
+        }
+
+        // this should never happen
+        assert(false);
+    }
+
+    const Connection _get_connection(size_t i)
+    {
+        assert(!_connections.empty());
+
+        for (auto &c : _connections) {
+            if (c.graph_i == i)
+                return c;
+        }
+
+        // this should never happen
+        assert(false);
+    }
+
+    size_t _get_input_i(size_t i_i)
+    {
+        assert(!_inputs_i.empty());
+        assert(i < _inputs_i.size());
+        std::set<size_t>::iterator it = _inputs_i.begin();
+        std::advance(it, i_i);
+        return (*it);
+    }
+
+    size_t _get_output_i(size_t i_i)
+    {
+        assert(!_outputs_i.empty());
+        assert(i < _outputs_i.size());
+        std::set<size_t>::iterator it = _outputs_i.begin();
+        std::advance(it, i_i);
+        return (*it);
+    }
+
     const Neuron _get_rnd_neuron(const std::function<double(void)> &rnd01)
     {
         assert(!_neurons.empty());
@@ -564,6 +608,62 @@ public:
                     break;
             }
         } while (!op_applied);
+    }
+
+    std::vector<double> infer(std::vector<double> inputs)
+    {
+        std::set<size_t> calculated_i;
+        std::vector<double> signals;
+
+        signals.resize(_g.get_n_vertices());
+
+        // set input signals
+        assert(inputs.size() == _inputs_i.size());
+        for (size_t i = 0; i < _inputs_i.size(); i++) {
+            const size_t in_i = _get_input_i(i);
+            assert(!calculated_i.contains(in_i));
+            calculated_i.insert(in_i);
+            assert(in_i < signals.size());
+            signals[in_i] = inputs[i];
+        }
+
+        std::vector<double> outputs;
+        for (size_t i = 0; i < _outputs_i.size(); i++) {
+            outputs.push_back(dfs_calculate_signal(i, calculated_i, signals));
+        }
+
+        return outputs;
+    }
+
+    double dfs_calculate_signal(size_t vertex_i,
+                                std::set<size_t> &calculated_i,
+                                std::vector<double> &signals)
+    {
+        // TODO: add
+        //     - get in_vertices:
+        //       - for every vertice -> run dfs_calculate_signal
+        //     - run calculation
+        //     - calculated.insert(v_i)
+
+        assert(vertex_i < signals.size());
+        if (calculated_i.contains(vertex_i)) {
+            return signals[vertex_i];
+        }
+
+        const Neuron n = get_neuron(vertex_i);
+        double sum = n.bias;
+        const std::vector<size_t> in_edges_i = _g.get_in_edges_i(vertex_i);
+        for (size_t in_edge_i : in_edges_i) {
+            const double weight = get_connection(in_edge_i).weight;
+            const size_t in_vertex_i = _g.get_edge(in_edge_i).src_vertex_i;
+            const double signal =
+                    dfs_calculate_signal(in_vertex_i, calculated_i, signals);
+            signals[in_vertex_i] = signal;
+            sum += weight * signal;
+        }
+
+        calculated_i.insert(vertex_i);
+        return n.activation_f(sum);
     }
 };
 

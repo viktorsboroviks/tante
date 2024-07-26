@@ -28,10 +28,12 @@ struct Settings {
     size_t max_n_neurons = 0;
     size_t max_op_weight = 100;
     size_t op_weights[Operation::N_OPS] = {0};
-    size_t min_weight_step = 1;
-    size_t max_weight_step = -1;
-    size_t min_bias_step = 1;
-    size_t max_bias_step = -1;
+    double min_init_weight = -1;
+    double max_init_weight = 1;
+    double min_weight_step = 1;
+    double max_weight_step = -1;
+    double min_bias_step = 1;
+    double max_bias_step = -1;
 };
 
 class Neuron {
@@ -71,10 +73,11 @@ inline bool operator<(const Neuron &lhs, const Neuron &rhs)
 class Connection {
 public:
     size_t graph_i;
-    double weight = 0;
+    double weight;
 
-    Connection(size_t i) :
-        graph_i(i)
+    Connection(size_t i, double weight) :
+        graph_i(i),
+        weight(weight)
     {
     }
 };
@@ -82,6 +85,17 @@ public:
 inline bool operator<(const Connection &lhs, const Connection &rhs)
 {
     return lhs.graph_i < rhs.graph_i;
+}
+
+double rnd_in_range(const std::function<double(void)> &rnd01,
+                    double min,
+                    double max)
+{
+    assert(min < max);
+    const double retval = (rnd01() * (max - min)) + min;
+    assert(retval >= min);
+    assert(retval <= max);
+    return retval;
 }
 
 class Network {
@@ -238,7 +252,9 @@ private:
         auto *e = _g.get_edge(ei);
         e->label = "e" + std::to_string(ei) + ":" + v_src->label + "->" +
                    v_dst->label;
-        _connections.insert(Connection(ei));
+        const double init_weight = rnd_in_range(
+                rnd01, _settings.min_init_weight, _settings.max_init_weight);
+        _connections.insert(Connection(ei, init_weight));
 
         std::cout << "debug: added connection " << e->label << std::endl;
         return true;
@@ -366,12 +382,8 @@ private:
         }
 
         const Connection c_old = _get_rnd_connection(rnd01);
-        const double weight_step = (rnd01() * (_settings.max_weight_step -
-                                               _settings.min_weight_step)) +
-                                   _settings.min_weight_step;
-        assert(weight_step >= _settings.min_weight_step);
-        assert(weight_step <= _settings.max_weight_step);
-
+        const double weight_step = rnd_in_range(
+                rnd01, _settings.min_weight_step, _settings.max_weight_step);
         Connection c_new = c_old;
         c_new.weight += weight_step;
         _connections.erase(c_old);
@@ -391,11 +403,8 @@ private:
         }
 
         const Neuron n_old = _get_rnd_neuron(rnd01);
-        const double bias_step = (rnd01() * (_settings.max_bias_step -
-                                             _settings.min_bias_step)) +
-                                 _settings.min_bias_step;
-        assert(bias_step >= _settings.min_bias_step);
-        assert(bias_step <= _settings.max_bias_step);
+        const double bias_step = rnd_in_range(
+                rnd01, _settings.min_bias_step, _settings.max_bias_step);
 
         Neuron n_new = n_old;
         n_new.bias += bias_step;

@@ -4,7 +4,7 @@
 tante::Settings g_ts{};
 const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
-const size_t g_max_n_neurons = 5;
+const size_t g_max_n_hidden = 5;
 const size_t g_max_op_weight = 1;
 const double g_min_init_weight = -0.1;
 const double g_max_init_weight = 0.1;
@@ -84,7 +84,7 @@ void init_global_vars()
 {
     g_ts.n_inputs = g_n_inputs;
     g_ts.n_outputs = g_n_outputs;
-    g_ts.max_n_neurons = g_max_n_neurons;
+    g_ts.max_n_hidden = g_max_n_hidden;
     g_ts.max_op_weight = g_max_op_weight;
     g_ts.min_init_weight = g_min_init_weight;
     g_ts.max_init_weight = g_max_init_weight;

@@ -4,28 +4,34 @@ all: examples benchmarks
 
 lapsa:
 	git clone git@github.com:viktorsboroviks/lapsa.git
-	cd lapsa; git checkout dev-v1.3
+	cd lapsa; git checkout v2.2
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
 	cd grafiins; git checkout v1.2
 
-examples: find_same.o find_sin.o
+rododendrs:
+	git clone git@github.com:viktorsboroviks/rododendrs.git
+	cd rododendrs; git checkout v1.1
 
-find_sin.o: lapsa grafiins examples/find_sin.cpp
+examples: find_same.o
+#find_sin.o
+
+#find_sin.o: lapsa grafiins examples/find_sin.cpp
+#	g++ -Wall -Wextra -Werror -Wpedantic \
+#		-std=c++20 -O3 \
+#		-I./include \
+#		-I./lapsa/include \
+#		-I./grafiins/include \
+#		examples/find_sin.cpp -o $@
+
+find_same.o: lapsa grafiins rododendrs examples/find_same.cpp
 	g++ -Wall -Wextra -Werror -Wpedantic \
 		-std=c++20 -O3 \
 		-I./include \
 		-I./lapsa/include \
 		-I./grafiins/include \
-		examples/find_sin.cpp -o $@
-
-find_same.o: lapsa grafiins examples/find_same.cpp
-	g++ -Wall -Wextra -Werror -Wpedantic \
-		-std=c++20 -O3 \
-		-I./include \
-		-I./lapsa/include \
-		-I./grafiins/include \
+		-I./rododendrs/include \
 		examples/find_same.cpp -o $@
 
 benchmarks: acceptance_f.o
@@ -50,3 +56,4 @@ clean:
 distclean: clean
 	rm -rf lapsa
 	rm -rf grafiins
+	rm -rf rododendrs

@@ -1,6 +1,7 @@
 #include <array>
 #include <cassert>
 #include <functional>
+#include <map>
 #include <queue>
 #include <vector>
 
@@ -111,26 +112,58 @@ private:
     std::set<Neuron> _neurons;
     std::set<Connection> _connections;
 
-    const Neuron _get_neuron(size_t i)
+    bool _neuron_exists(size_t i)
     {
-        assert(!_neurons.empty());
+        if (_neurons.empty()) {
+            return false;
+        }
 
         for (auto &n : _neurons) {
-            if (n.graph_i == i)
+            if (n.graph_i == i) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const Neuron _get_neuron(size_t i)
+    {
+        assert(_neuron_exists(i));
+
+        for (auto &n : _neurons) {
+            if (n.graph_i == i) {
                 return n;
+            }
         }
 
         // this should never happen
         assert(false);
     }
 
-    const Connection _get_connection(size_t i)
+    bool _connection_exists(size_t i)
     {
-        assert(!_connections.empty());
+        if (_connections.empty()) {
+            return false;
+        }
 
         for (auto &c : _connections) {
-            if (c.graph_i == i)
+            if (c.graph_i == i) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const Connection _get_connection(size_t i)
+    {
+        assert(_connection_exists(i));
+
+        for (auto &c : _connections) {
+            if (c.graph_i == i) {
                 return c;
+            }
         }
 
         // this should never happen
@@ -234,17 +267,29 @@ private:
     {
         std::cout << "debug: adding connection..." << std::endl;
 
-        // TODO: fix here
         const auto all_vi = _g.get_vertices_i();
         size_t src_vi;
         size_t dst_vi;
-        do {
-            const size_t src_vi_i = rnd01() * all_vi.size();
-            src_vi = all_vi[src_vi_i];
-            const size_t dst_vi_i = rnd01() * all_vi.size();
-            dst_vi = all_vi[dst_vi_i];
-        } while (_outputs_i.contains(src_vi) || _inputs_i.contains(dst_vi) ||
-                 dst_vi == src_vi);
+        const size_t src_vi_i = rnd01() * all_vi.size();
+        src_vi = all_vi[src_vi_i];
+        const size_t dst_vi_i = rnd01() * all_vi.size();
+        dst_vi = all_vi[dst_vi_i];
+        if (_outputs_i.contains(src_vi) || _inputs_i.contains(dst_vi) ||
+            dst_vi == src_vi) {
+            return false;
+        }
+
+        // every output should have only one connection
+        if (_outputs_i.contains(dst_vi)) {
+            const auto all_ei = _g.get_edges_i();
+            for (size_t ei : all_ei) {
+                const auto *e = _g.get_edge(ei);
+                assert(e != nullptr);
+                if (e->dst_vertex_i == dst_vi) {
+                    return false;
+                }
+            }
+        }
 
         const int ei = _g.add_edge(grafiins::Edge(src_vi, dst_vi));
         if (ei < 0) {
@@ -252,8 +297,11 @@ private:
         }
 
         auto *v_src = _g.get_vertex(src_vi);
+        assert(v_src != nullptr);
         auto *v_dst = _g.get_vertex(dst_vi);
+        assert(v_dst != nullptr);
         auto *e = _g.get_edge(ei);
+        assert(e != nullptr);
         e->label = "e" + std::to_string(ei) + ":" + v_src->label + "->" +
                    v_dst->label;
         const double init_weight = rnd_in_range(
@@ -524,14 +572,6 @@ private:
         return true;
     }
 
-    void _restore(const std::function<double(void)> &rnd01)
-    {
-        while (!_is_operational()) {
-            std::cout << "debug: not operational" << std::endl;
-            apply_random_operation(rnd01);
-        }
-    }
-
 public:
     Network(Settings &in_settings) :
         _settings(in_settings)
@@ -545,6 +585,14 @@ public:
             assert(w <= _settings.max_op_weight);
         }
 #endif
+    }
+
+    void restore(const std::function<double(void)> &rnd01)
+    {
+        while (!_is_operational()) {
+            std::cout << "debug: not operational" << std::endl;
+            apply_random_operation(rnd01);
+        }
     }
 
     void randomize(const std::function<double(void)> &rnd01)
@@ -572,7 +620,7 @@ public:
         assert(_outputs_i.size() == _settings.n_outputs);
 
         // restore network (necessary for energy calculation)
-        _restore(rnd01);
+        restore(rnd01);
     }
 
     void apply_random_operation(const std::function<double(void)> &rnd01)
@@ -620,14 +668,17 @@ public:
                     break;
             }
         } while (!op_applied);
+
+        // restore network (necessary for energy calculation)
+        restore(rnd01);
     }
 
     std::vector<double> infer(std::vector<double> inputs)
     {
-        std::set<size_t> calculated_i;
-        std::vector<double> signals;
+        std::cout << "debug: infer" << std::endl;
 
-        signals.resize(_g.get_n_vertices());
+        std::set<size_t> calculated_i;
+        std::map<size_t, double> signals;
 
         // set input signals
         assert(inputs.size() == _inputs_i.size());
@@ -635,27 +686,52 @@ public:
             const size_t in_i = _get_input_i(i);
             assert(!calculated_i.contains(in_i));
             calculated_i.insert(in_i);
-            assert(in_i < signals.size());
             signals[in_i] = inputs[i];
         }
 
         // calculate signal for every output
         std::vector<double> outputs;
         for (size_t i = 0; i < _outputs_i.size(); i++) {
-            outputs.push_back(dfs_calculate_signal(i, calculated_i, signals));
+            outputs.push_back(dfs_calculate_signal(
+                    _get_output_i(i), calculated_i, signals));
         }
 
+        std::cout << "debug: calculated_i" << std::endl;
+        for (size_t i : calculated_i) {
+            std::cout << i << std::endl;
+        }
+
+        std::cout << "debug: signals" << std::endl;
+        std::map<size_t, double>::iterator it = signals.begin();
+        while (it != signals.end()) {
+            std::cout << it->first << ": " << it->second << std::endl;
+            it++;
+        }
         return outputs;
     }
 
     // depth first search function that calculates signals of neurons
     double dfs_calculate_signal(size_t vertex_i,
                                 std::set<size_t> &calculated_i,
-                                std::vector<double> &signals)
+                                std::map<size_t, double> &signals)
     {
-        assert(vertex_i < signals.size());
+        std::cout << "debug: vertex_i=" << vertex_i << std::endl;
         if (calculated_i.contains(vertex_i)) {
             return signals[vertex_i];
+        }
+
+        if (!_neuron_exists(vertex_i)) {
+            // if no such neuron exist, it can only be output
+            assert(_outputs_i.contains(vertex_i));
+            const std::vector<size_t> in_vertices_i =
+                    _g.get_in_vertices_i(vertex_i);
+            // every output should only have 1 incomming vertex
+            std::cout << "debug: in_vertices_i.size()=" << in_vertices_i.size()
+                      << std::endl;
+            assert(in_vertices_i.size() == 1);
+            const size_t in_vertex_i = in_vertices_i[0];
+            std::cout << "debug: in_vertex_i=" << in_vertex_i << std::endl;
+            return dfs_calculate_signal(in_vertex_i, calculated_i, signals);
         }
 
         const Neuron n = _get_neuron(vertex_i);

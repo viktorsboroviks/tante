@@ -27,7 +27,7 @@ const size_t g_op_w_step_bias = 1;
 const size_t g_n_states = 1000000;
 const size_t g_progress_update_period = 100;
 const double g_init_p_acceptance = 0.97;
-const size_t g_init_t_log_len = 10000;
+const size_t g_init_t_log_len = 100;
 const double g_cooling_rate = (1 - 1e-4);
 const size_t g_cooling_round_len = 1;
 
@@ -47,9 +47,12 @@ public:
     double get_energy()
     {
         // if energy not calculated, do it now and store the result
+        std::cout << "debug: get_energy" << std::endl;
         if (!_energy_calculated) {
+            std::cout << "debug: energy not calculated" << std::endl;
             std::vector<double> inputs;
             const double training_data = rand() % 1000;
+            std::cout << "debug: training_data=" << training_data << std::endl;
             inputs.push_back(training_data);
             assert(inputs.size() == g_n_inputs);
             std::vector<double> outputs = _n.infer(inputs);
@@ -58,6 +61,7 @@ public:
             _energy = std::abs(training_data - result);
             _energy_calculated = true;
         }
+        std::cout << "debug: _energy=" << _energy << std::endl;
         return _energy;
     }
 
@@ -70,6 +74,7 @@ public:
     void change(const std::function<double(void)> &rnd01)
     {
         _n.apply_random_operation(rnd01);
+        _n.restore(rnd01);
         reset_energy();
     }
 };

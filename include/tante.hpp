@@ -122,7 +122,7 @@ private:
     size_t _get_input_i(size_t i_i)
     {
         assert(!_inputs_i.empty());
-        assert(i < _inputs_i.size());
+        assert(i_i < _inputs_i.size());
         std::set<size_t>::iterator it = _inputs_i.begin();
         std::advance(it, i_i);
         return (*it);
@@ -131,7 +131,7 @@ private:
     size_t _get_output_i(size_t i_i)
     {
         assert(!_outputs_i.empty());
-        assert(i < _outputs_i.size());
+        assert(i_i < _outputs_i.size());
         std::set<size_t>::iterator it = _outputs_i.begin();
         std::advance(it, i_i);
         return (*it);
@@ -627,6 +627,7 @@ public:
             signals[in_i] = inputs[i];
         }
 
+        // calculate signal for every output
         std::vector<double> outputs;
         for (size_t i = 0; i < _outputs_i.size(); i++) {
             outputs.push_back(dfs_calculate_signal(i, calculated_i, signals));
@@ -635,27 +636,26 @@ public:
         return outputs;
     }
 
+    // depth first search function that calculates signals of neurons
     double dfs_calculate_signal(size_t vertex_i,
                                 std::set<size_t> &calculated_i,
                                 std::vector<double> &signals)
     {
-        // TODO: add
-        //     - get in_vertices:
-        //       - for every vertice -> run dfs_calculate_signal
-        //     - run calculation
-        //     - calculated.insert(v_i)
-
         assert(vertex_i < signals.size());
         if (calculated_i.contains(vertex_i)) {
             return signals[vertex_i];
         }
 
-        const Neuron n = get_neuron(vertex_i);
+        const Neuron n = _get_neuron(vertex_i);
         double sum = n.bias;
-        const std::vector<size_t> in_edges_i = _g.get_in_edges_i(vertex_i);
+        const auto *v = _g.get_vertex(vertex_i);
+        assert(v != nullptr);
+        const std::set<size_t> in_edges_i = v->get_in_edges_i();
         for (size_t in_edge_i : in_edges_i) {
-            const double weight = get_connection(in_edge_i).weight;
-            const size_t in_vertex_i = _g.get_edge(in_edge_i).src_vertex_i;
+            const double weight = _get_connection(in_edge_i).weight;
+            const auto *e = _g.get_edge(in_edge_i);
+            assert(e != nullptr);
+            const size_t in_vertex_i = e->src_vertex_i;
             const double signal =
                     dfs_calculate_signal(in_vertex_i, calculated_i, signals);
             signals[in_vertex_i] = signal;

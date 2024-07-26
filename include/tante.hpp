@@ -91,6 +91,10 @@ double rnd_in_range(const std::function<double(void)> &rnd01,
                     double min,
                     double max)
 {
+    if (min == max) {
+        return min;
+    }
+
     assert(min < max);
     const double retval = (rnd01() * (max - min)) + min;
     assert(retval >= min);
@@ -389,7 +393,7 @@ private:
         _connections.erase(c_old);
         _connections.insert(c_new);
 
-        const std::string weight_step_sign = weight_step >= 0 ? "+" : "-";
+        const std::string weight_step_sign = weight_step >= 0 ? "+" : "";
         std::cout << "debug: stepped weight to " << c_new.weight << "("
                   << weight_step_sign << weight_step << ")" << std::endl;
         return true;
@@ -411,7 +415,7 @@ private:
         _neurons.erase(n_old);
         _neurons.insert(n_new);
 
-        const std::string bias_step_sign = bias_step >= 0 ? "+" : "-";
+        const std::string bias_step_sign = bias_step >= 0 ? "+" : "";
         std::cout << "debug: stepped bias to " << n_new.bias << "("
                   << bias_step_sign << bias_step << ")" << std::endl;
         return true;
@@ -571,8 +575,7 @@ public:
         _restore(rnd01);
     }
 
-    virtual void apply_random_operation(
-            const std::function<double(void)> &rnd01)
+    void apply_random_operation(const std::function<double(void)> &rnd01)
     {
         bool op_applied = false;
         do {

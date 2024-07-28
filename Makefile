@@ -8,11 +8,15 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v2.0
+	cd grafiins; git checkout v3.4
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git
 	cd rododendrs; git checkout v1.1
+
+garaza:
+	git clone git@github.com:viktorsboroviks/garaza.git
+	cd garaza; git checkout v1.4
 
 examples: find_same.o
 #find_sin.o
@@ -25,13 +29,14 @@ examples: find_same.o
 #		-I./grafiins/include \
 #		examples/find_sin.cpp -o $@
 
-find_same.o: lapsa grafiins rododendrs examples/find_same.cpp
+find_same.o: lapsa grafiins rododendrs garaza examples/find_same.cpp
 	g++ -Wall -Wextra -Werror -Wpedantic \
 		-std=c++20 -O3 \
 		-I./include \
 		-I./lapsa/include \
 		-I./grafiins/include \
 		-I./rododendrs/include \
+		-I./garaza/include \
 		examples/find_same.cpp -o $@
 
 benchmarks: acceptance_f.o
@@ -57,3 +62,4 @@ distclean: clean
 	rm -rf lapsa
 	rm -rf grafiins
 	rm -rf rododendrs
+	rm -rf garaza

@@ -8,7 +8,7 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v3.5
+	cd grafiins; git checkout v3.6
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git

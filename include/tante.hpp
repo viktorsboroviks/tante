@@ -17,10 +17,18 @@
 namespace tante {
 
 enum Operation {
-    ADD_NEURON_SIGMOID = 0,
-    ADD_NEURON_TANH,
-    ADD_NEURON_RELU,
-    RM_NEURON,
+    ADD_INPUT_SIGMOID = 0,
+    ADD_INPUT_TANH,
+    ADD_INPUT_RELU,
+    RM_INPUT,
+    ADD_OUTPUT_SIGMOID,
+    ADD_OUTPUT_TANH,
+    ADD_OUTPUT_RELU,
+    RM_OUTPUT,
+    ADD_HIDDEN_SIGMOID,
+    ADD_HIDDEN_TANH,
+    ADD_HIDDEN_RELU,
+    RM_HIDDEN,
     ADD_CONNECTION,
     RM_CONNECTION,
     MV_CONNECTION_SRC,
@@ -520,51 +528,38 @@ private:
     //        return true;
     //    }
 
-    int _get_random_operation()
+    // return random operation from the provided list, based on
+    // related weights
+    Operation _random_operation(const std::vectior<Operation>& ops)
     {
-        std::vector<int> op_value;
-        op_value.resize(Operation::N_OPS);
-        int op_value_sum = 0;
+        assert(!ops.empty());
 
-        for (size_t i = 0; i < op_value.size(); i++) {
-            op_value_sum += _settings.op_weights[i];
-            op_value[i] = op_value_sum;
-#ifndef NDEBUG
-            switch (i) {
-                case Operation::ADD_NEURON_SIGMOID:
-                case Operation::ADD_NEURON_TANH:
-                case Operation::ADD_NEURON_RELU:
-                case Operation::RM_NEURON:
-                case Operation::ADD_CONNECTION:
-                case Operation::RM_CONNECTION:
-                case Operation::MV_CONNECTION_SRC:
-                case Operation::MV_CONNECTION_DST:
-                case Operation::STEP_WEIGHT:
-                case Operation::STEP_BIAS:
-                    break;
-                default:
-                    // this should never happen
-                    assert(false);
-                    break;
-            }
-#endif
+        std::vector<size_t> op_value;
+        size_t op_weights_sum = 0;
+        for (auto& op : ops) {
+            assert(op != Operation::N_OPS);
+            assert(op < Operation::N_OPS);
+            op_weights_sum += op;
+            op_value.push_back(op_weights_sum);
         }
 
-#ifndef NDEBUG
-        int prev_value = 0;
-        for (int v : op_value) {
-            assert(v >= prev_value);
-            prev_value = v;
-        }
-#endif
-        const int rnd_value = rododendrs::rnd01() * op_value_sum;
-        for (size_t i = 0; i < op_value.size(); i++) {
-            if (rnd_value < op_value[i]) {
-                return i;
+        const int rnd_value = rododendrs::rnd01() * op_weights_sum;
+        for (Operation op = 0; op < op_value.size(); op++) {
+            if (rnd_value < op_value[op]) {
+                return op;
             }
         }
 
-        throw std::runtime_error("Failed to get random operation.");
+        throw std::runtime_error("Failed to select random operation.");
+    }
+
+    Operation _random_operation()
+    {
+        std::vector<Operation> ops;
+        for (Operation op = 0; op < Operation::N_OPS; op++) {
+            ops.push_back(op);
+        }
+        return _select_rnd_operation(ops);
     }
 
     //    bool _is_operational()
@@ -638,14 +633,6 @@ public:
         assert(_settings.min_bias_step <= _settings.max_bias_step);
     }
 
-    //    void restore(const std::function<double(void)> &rnd01)
-    //    {
-    //        while (!_is_operational()) {
-    //            std::cout << "debug: not operational" << std::endl;
-    //            apply_random_operation(rnd01);
-    //        }
-    //    }
-
     void randomize()
     {
         // initial state will be missing all pieces
@@ -672,61 +659,125 @@ public:
         assert(_outputs_i.size() == _settings.n_outputs);
 
         // add connections and hidden neurons until the network is restored
-        // TODO:
-        // - while connection not restored
-        // - do something legal at random
-        // - repeat
+        while (!_is_operational()) {
+            std::cout << "debug: not operational" << std::endl;
+            const std::vector<Operation> allowed_ops = {
+                Operation::ADD_HIDDEN_SIGMOID,
+                Operation::ADD_HIDDEN_TANH,
+                Operation::ADD_HIDDEN_RELU,
+                Operation::RM_HIDDEN,
+                Operation::ADD_CONNECTION,
+                Operation::RM_CONNECTION,
+                Operation::MV_CONNECTION_SRC,
+                Operation::MV_CONNECTION_DST,
+                Operation::STEP_WEIGHT,
+                Operation::STEP_BIAS,
+            }
+
+            do {
+                switch (_random_operation(allowed_ops)) {
+                    case Operation::ADD_NEURON_SIGMOID:
+                        std::cout << "debug: adding neuron sigmoid..."
+                                  << std::endl;
+                        op_applied = _add_neuron(rnd01, Neuron::af_sigmoid);
+                        break;
+                    case Operation::ADD_NEURON_TANH:
+                        std::cout << "debug: adding neuron tanh..." <<
+                        std::endl; op_applied = _add_neuron(rnd01,
+                        Neuron::af_tanh); break;
+                    case Operation::ADD_NEURON_RELU:
+                        std::cout << "debug: adding neuron relu..." <<
+                        std::endl; op_applied = _add_neuron(rnd01,
+                        Neuron::af_relu); break;
+                    case Operation::RM_NEURON:
+                        op_applied = _rm_neuron(rnd01);
+                        break;
+                    case Operation::ADD_CONNECTION:
+                        op_applied = _add_connection(rnd01);
+                        break;
+                    case Operation::RM_CONNECTION:
+                        op_applied = _rm_connection(rnd01);
+                        break;
+                    case Operation::MV_CONNECTION_SRC:
+                        op_applied = _mv_connection_src(rnd01);
+                        break;
+                    case Operation::MV_CONNECTION_DST:
+                        op_applied = _mv_connection_dst(rnd01);
+                        break;
+                    case Operation::STEP_WEIGHT:
+                        op_applied = _step_weight(rnd01);
+                        break;
+                    case Operation::STEP_BIAS:
+                        op_applied = _step_bias(rnd01);
+                        break;
+                    default:
+                        // this should never happen
+                        assert(false);
+                        break;
+                }
+            } while (!op_applied);
+        }
     }
 
-    //    void apply_random_operation(const std::function<double(void)> &rnd01)
-    //    {
-    //        bool op_applied = false;
-    //        do {
-    //            switch (_get_random_operation(rnd01)) {
-    //                case Operation::ADD_NEURON_SIGMOID:
-    //                    std::cout << "debug: adding neuron sigmoid..."
-    //                              << std::endl;
-    //                    op_applied = _add_neuron(rnd01, Neuron::af_sigmoid);
-    //                    break;
-    //                case Operation::ADD_NEURON_TANH:
-    //                    std::cout << "debug: adding neuron tanh..." <<
-    //                    std::endl; op_applied = _add_neuron(rnd01,
-    //                    Neuron::af_tanh); break;
-    //                case Operation::ADD_NEURON_RELU:
-    //                    std::cout << "debug: adding neuron relu..." <<
-    //                    std::endl; op_applied = _add_neuron(rnd01,
-    //                    Neuron::af_relu); break;
-    //                case Operation::RM_NEURON:
-    //                    op_applied = _rm_neuron(rnd01);
-    //                    break;
-    //                case Operation::ADD_CONNECTION:
-    //                    op_applied = _add_connection(rnd01);
-    //                    break;
-    //                case Operation::RM_CONNECTION:
-    //                    op_applied = _rm_connection(rnd01);
-    //                    break;
-    //                case Operation::MV_CONNECTION_SRC:
-    //                    op_applied = _mv_connection_src(rnd01);
-    //                    break;
-    //                case Operation::MV_CONNECTION_DST:
-    //                    op_applied = _mv_connection_dst(rnd01);
-    //                    break;
-    //                case Operation::STEP_WEIGHT:
-    //                    op_applied = _step_weight(rnd01);
-    //                    break;
-    //                case Operation::STEP_BIAS:
-    //                    op_applied = _step_bias(rnd01);
-    //                    break;
-    //                default:
-    //                    // this should never happen
-    //                    assert(false);
-    //                    break;
-    //            }
-    //        } while (!op_applied);
-    //
-    //        // restore network (necessary for energy calculation)
-    //        restore(rnd01);
-    //    }
+    bool apply_operation(Operation op) {
+        switch (op) {
+            // TODO: Proceed here
+            case Operation::ADD_INPUT_SIGMOID:
+            case Operation::ADD_INPUT_TANH:
+            case Operation::ADD_INPUT_RELU:
+            case Operation::RM_INPUT:
+
+            case Operation::ADD_OUTPUT_SIGMOID:
+            case Operation::ADD_OUTPUT_TANH:
+            case Operation::ADD_OUTPUT_RELU:
+            case Operation::RM_OUTPUT:
+
+            case Operation::ADD_HIDDEN_SIGMOID:
+            case Operation::ADD_HIDDEN_TANH:
+            case Operation::ADD_HIDDEN_RELU:
+            case Operation::RM_HIDDEN:
+
+            case Operation::ADD_NEURON_SIGMOID:
+                std::cout << "debug: adding neuron sigmoid..."
+                            << std::endl;
+                op_applied = _add_neuron(rnd01, Neuron::af_sigmoid);
+                break;
+            case Operation::ADD_NEURON_TANH:
+                std::cout << "debug: adding neuron tanh..." <<
+                std::endl; op_applied = _add_neuron(rnd01,
+                Neuron::af_tanh); break;
+            case Operation::ADD_NEURON_RELU:
+                std::cout << "debug: adding neuron relu..." <<
+                std::endl; op_applied = _add_neuron(rnd01,
+                Neuron::af_relu); break;
+            case Operation::RM_NEURON:
+                op_applied = _rm_neuron(rnd01);
+                break;
+            case Operation::ADD_CONNECTION:
+                op_applied = _add_connection(rnd01);
+                break;
+            case Operation::RM_CONNECTION:
+                op_applied = _rm_connection(rnd01);
+                break;
+            case Operation::MV_CONNECTION_SRC:
+                op_applied = _mv_connection_src(rnd01);
+                break;
+            case Operation::MV_CONNECTION_DST:
+                op_applied = _mv_connection_dst(rnd01);
+                break;
+            case Operation::STEP_WEIGHT:
+                op_applied = _step_weight(rnd01);
+                break;
+            case Operation::STEP_BIAS:
+                op_applied = _step_bias(rnd01);
+                break;
+            case Operation::N_OPS:
+            default:
+                // this should never happen
+                assert(false);
+                break;
+        }
+    }
 
     //    std::vector<double> infer(std::vector<double> inputs)
     //    {

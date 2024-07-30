@@ -171,28 +171,25 @@ public:
     {
         assert(_inputs_i.size() == _settings.n_inputs);
         assert(_outputs_i.size() == _settings.n_outputs);
-        assert(_hidden_i.size() <= _settings.max_n_neurons);
+        assert(_hidden_i.size() <= _settings.max_n_hidden);
 
-        const std::set<size_t> all_inputs_vi;
-        for (size_t i : _inputs_i.all_i()) {
-            all_inputs_vi.insert(_inputs_i.at(i));
-        }
-
-        const std::set<size_t> all_outputs_vi;
-        for (size_t i : _outputs_i.all_i()) {
-            all_outputs_vi.insert(_outputs_i.at(i));
-        }
+        const std::list<size_t> list_inputs_vi = _inputs_i.list();
+        const std::list<size_t> list_outputs_vi = _outputs_i.list();
+        const std::set<size_t> set_inputs_vi{list_inputs_vi.begin(),
+                                             list_inputs_vi.end()};
+        const std::set<size_t> set_outputs_vi{list_outputs_vi.begin(),
+                                              list_outputs_vi.end()};
 
         // every input has a connection to at least one output
-        for (size_t ivi : _inputs_i) {
-            if (!_g.are_connected_any({ivi}, all_outputs_vi)) {
+        for (size_t ivi : list_inputs_vi) {
+            if (!_g.are_connected_any({ivi}, set_outputs_vi)) {
                 return false;
             }
         }
 
         // every output has a connection to at least one input
-        for (size_t ovi : _outputs_i) {
-            if (!_g.are_connected_any(all_inputs_vi, {ovi})) {
+        for (size_t ovi : list_outputs_vi) {
+            if (!_g.are_connected_any(set_inputs_vi, {ovi})) {
                 return false;
             }
         }
@@ -233,10 +230,43 @@ public:
               Operation::STEP_BIAS,
             }
 
-            while (!apply_operation(_random_operation()));
+            while (!apply_operation(get_random_operation()));
         }
     }
 
+    // return random operation from the provided list, based on
+    // related weights
+    Operation get_random_operation(const std::vector<Operation>& ops)
+    {
+        assert(!ops.empty());
+
+        std::vector<size_t> op_value;
+        size_t op_weights_sum = 0;
+        for (auto& op : ops) {
+            assert(op != Operation::N_OPS);
+            assert(op < Operation::N_OPS);
+            op_weights_sum += op;
+            op_value.push_back(op_weights_sum);
+        }
+
+        const int rnd_value = rododendrs::rnd01() * op_weights_sum;
+        for (Operation op = 0; op < op_value.size(); op++) {
+            if (rnd_value < op_value[op]) {
+                return op;
+            }
+        }
+
+        throw std::runtime_error("Failed to select random operation.");
+    }
+
+    Operation get_random_operation()
+    {
+        std::vector<Operation> ops;
+        for (Operation op = 0; op < Operation::N_OPS; op++) {
+            ops.push_back(op);
+        }
+        return _select_rnd_operation(ops);
+    }
     bool apply_operation(Operation op)
     {
         try {
@@ -541,40 +571,6 @@ private:
         const double bias_step =
                 rnd_in_range(_settings.min_bias_step, _settings.max_bias_step);
         e->bias += bias_step;
-    }
-
-    // return random operation from the provided list, based on
-    // related weights
-    Operation _random_operation(const std::vectior<Operation>& ops)
-    {
-        assert(!ops.empty());
-
-        std::vector<size_t> op_value;
-        size_t op_weights_sum = 0;
-        for (auto& op : ops) {
-            assert(op != Operation::N_OPS);
-            assert(op < Operation::N_OPS);
-            op_weights_sum += op;
-            op_value.push_back(op_weights_sum);
-        }
-
-        const int rnd_value = rododendrs::rnd01() * op_weights_sum;
-        for (Operation op = 0; op < op_value.size(); op++) {
-            if (rnd_value < op_value[op]) {
-                return op;
-            }
-        }
-
-        throw std::runtime_error("Failed to select random operation.");
-    }
-
-    Operation _random_operation()
-    {
-        std::vector<Operation> ops;
-        for (Operation op = 0; op < Operation::N_OPS; op++) {
-            ops.push_back(op);
-        }
-        return _select_rnd_operation(ops);
     }
 };
 

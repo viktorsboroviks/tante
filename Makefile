@@ -16,7 +16,7 @@ rododendrs:
 
 garaza:
 	git clone git@github.com:viktorsboroviks/garaza.git
-	cd garaza; git checkout v2.0
+	cd garaza; git checkout v2.1
 
 examples: find_same.o
 #find_sin.o

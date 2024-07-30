@@ -44,39 +44,38 @@ public:
     {
     }
 
-    //    double get_energy()
-    //    {
-    //        // if energy not calculated, do it now and store the result
-    //        std::cout << "debug: get_energy" << std::endl;
-    //        if (!_energy_calculated) {
-    //            std::cout << "debug: energy not calculated" << std::endl;
-    //            std::vector<double> inputs;
-    //            const double training_data = rand() % 1000;
-    //            std::cout << "debug: training_data=" << training_data <<
-    //            std::endl; inputs.push_back(training_data);
-    //            assert(inputs.size() == g_n_inputs);
-    //            std::vector<double> outputs = _n.infer(inputs);
-    //            assert(outputs.size() == g_n_outputs);
-    //            const double result = outputs[0];
-    //            _energy = std::abs(training_data - result);
-    //            _energy_calculated = true;
-    //        }
-    //        std::cout << "debug: _energy=" << _energy << std::endl;
-    //        return _energy;
-    //        return 0;
-    //    }
+    double get_energy()
+    {
+        //        // if energy not calculated, do it now and store the result
+        //        std::cout << "debug: get_energy" << std::endl;
+        //        if (!_energy_calculated) {
+        //            std::cout << "debug: energy not calculated" << std::endl;
+        //            std::vector<double> inputs;
+        //            const double training_data = rand() % 1000;
+        //            std::cout << "debug: training_data=" << training_data <<
+        //            std::endl; inputs.push_back(training_data);
+        //            assert(inputs.size() == g_n_inputs);
+        //            std::vector<double> outputs = _n.infer(inputs);
+        //            assert(outputs.size() == g_n_outputs);
+        //            const double result = outputs[0];
+        //            _energy = std::abs(training_data - result);
+        //            _energy_calculated = true;
+        //        }
+        //        std::cout << "debug: _energy=" << _energy << std::endl;
+        //        return _energy;
+        return 0;
+    }
 
     void randomize()
     {
-        _n.randomize();
+        _n.restore_randomly();
         reset_energy();
     }
 
     void change()
     {
-        //        _n.apply_random_operation();
-        //        _n.restore();
-        //        reset_energy();
+        while (!_n.apply_operation(_n.get_random_operation()));
+        _n.restore_randomly() reset_energy();
     }
 };
 

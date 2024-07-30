@@ -149,6 +149,231 @@ double rnd_in_range(double min, double max)
 }
 
 class Network {
+public:
+    Network(Settings& in_settings) :
+        _settings(in_settings)
+    {
+        assert(_settings.n_inputs > 0);
+        assert(_settings.n_outputs > 0);
+        assert(_settings.max_n_hidden > 0);
+        assert(_settings.max_op_weight > 0);
+#ifndef NDEBUG
+        for (auto w : _settings.op_weights) {
+            assert(w <= _settings.max_op_weight);
+        }
+#endif
+        assert(_settings.min_init_weight <= _settings.max_init_weight);
+        assert(_settings.min_weight_step <= _settings.max_weight_step);
+        assert(_settings.min_bias_step <= _settings.max_bias_step);
+    }
+
+    bool is_operational()
+    {
+        assert(_inputs_i.size() == _settings.n_inputs);
+        assert(_outputs_i.size() == _settings.n_outputs);
+        assert(_hidden_i.size() <= _settings.max_n_neurons);
+
+        const std::set<size_t> all_inputs_vi;
+        for (size_t i : _inputs_i.all_i()) {
+            all_inputs_vi.insert(_inputs_i.at(i));
+        }
+
+        const std::set<size_t> all_outputs_vi;
+        for (size_t i : _outputs_i.all_i()) {
+            all_outputs_vi.insert(_outputs_i.at(i));
+        }
+
+        // every input has a connection to at least one output
+        for (size_t ivi : _inputs_i) {
+            if (!_g.are_connected_any({ivi}, all_outputs_vi)) {
+                return false;
+            }
+        }
+
+        // every output has a connection to at least one input
+        for (size_t ovi : _outputs_i) {
+            if (!_g.are_connected_any(all_inputs_vi, {ovi})) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // keep applying random operations until the network becomes operational
+    void restore_randomly()
+    {
+        // add missing inputs
+        for (size_t i = 0; i < _settings.n_inputs; i++) {
+            if (_inputs_i.at(i) == nullptr) {
+                _add_neuron(Neuron::Type::NEURON_INPUT, _settings.afid, i);
+            }
+        }
+        assert(_inputs_i.size() == _settings.n_inputs);
+
+        // add missing outputs
+        for (size_t i = 0; i < _settings.n_outputs; i++) {
+            if (_outputs_i.at(i) == nullptr) {
+                _add_neuron(Neuron::Type::NEURON_OUTPUT, _settings.afid, i);
+            }
+        }
+        assert(_outputs_i.size() == _settings.n_outputs);
+
+        // add connections and hidden neurons until the network is restored
+        while (!_is_operational()) {
+            std::cout << "debug: not operational" << std::endl;
+            const std::vector<Operation> allowed_ops =
+            { Operation::ADD_HIDDEN,
+              Operation::RM_HIDDEN,
+              Operation::ADD_CONNECTION,
+              Operation::RM_CONNECTION,
+              Operation::MV_CONNECTION_SRC,
+              Operation::MV_CONNECTION_DST,
+              Operation::STEP_WEIGHT,
+              Operation::STEP_BIAS,
+            }
+
+            while (!apply_operation(_random_operation()));
+        }
+    }
+
+    bool apply_operation(Operation op)
+    {
+        try {
+            switch (op) {
+                case Operation::ADD_INPUT:
+                    _add_neuron(Neuron::Type::NEURON_INPUT);
+                    break;
+                case Operation::RM_INPUT:
+                    _rm_neuron(Neuron::Type::NEURON_INPUT);
+                    break;
+                case Operation::ADD_OUTPUT:
+                    _add_neuron(Neuron::Type::NEURON_OUTPUT);
+                    break;
+                case Operation::RM_OUTPUT:
+                    _rm_neuron(Neuron::Type::NEURON_OUTPUT);
+                    break;
+                case Operation::ADD_HIDDEN:
+                    _add_neuron(Neuron::Type::NEURON_HIDDEN);
+                    break;
+                case Operation::RM_HIDDEN:
+                    _rm_neuron(Neuron::Type::NEURON_HIDDEN);
+                    break;
+                case Operation::ADD_CONNECTION:
+                    _add_connection();
+                    break;
+                case Operation::RM_CONNECTION:
+                    _rm_connection();
+                    break;
+                case Operation::MV_CONNECTION_SRC:
+                    _mv_connection_src();
+                    break;
+                case Operation::MV_CONNECTION_DST:
+                    _mv_connection_dst();
+                    break;
+                case Operation::STEP_WEIGHT:
+                    _step_weight();
+                    break;
+                case Operation::STEP_BIAS:
+                    _step_bias();
+                    break;
+
+                case Operation::N_OPS:
+                default:
+                    // this should never happen
+                    throw std::runtime_error("Invalid operation.")
+            }
+        }
+        catch (std::logic_error& e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    //    std::vector<double> infer(std::vector<double> inputs)
+    //    {
+    //        std::cout << "debug: infer" << std::endl;
+    //
+    //        std::set<size_t> calculated_i;
+    //        std::map<size_t, double> signals;
+    //
+    //        // set input signals
+    //        assert(inputs.size() == _inputs_i.size());
+    //        for (size_t i = 0; i < _inputs_i.size(); i++) {
+    //            const size_t in_i = _get_input_i(i);
+    //            assert(!calculated_i.contains(in_i));
+    //            calculated_i.insert(in_i);
+    //            signals[in_i] = inputs[i];
+    //        }
+    //
+    //        // calculate signal for every output
+    //        std::vector<double> outputs;
+    //        for (size_t i = 0; i < _outputs_i.size(); i++) {
+    //            outputs.push_back(dfs_calculate_signal(
+    //                    _get_output_i(i), calculated_i, signals));
+    //        }
+    //
+    //        std::cout << "debug: calculated_i" << std::endl;
+    //        for (size_t i : calculated_i) {
+    //            std::cout << i << std::endl;
+    //        }
+    //
+    //        std::cout << "debug: signals" << std::endl;
+    //        std::map<size_t, double>::iterator it = signals.begin();
+    //        while (it != signals.end()) {
+    //            std::cout << it->first << ": " << it->second << std::endl;
+    //            it++;
+    //        }
+    //        return outputs;
+    //    }
+    //
+    //    // depth first search function that calculates signals of neurons
+    //    double dfs_calculate_signal(size_t vertex_i,
+    //                                std::set<size_t> &calculated_i,
+    //                                std::map<size_t, double> &signals)
+    //    {
+    //        std::cout << "debug: vertex_i=" << vertex_i << std::endl;
+    //        if (calculated_i.contains(vertex_i)) {
+    //            return signals[vertex_i];
+    //        }
+    //
+    //        if (!_neuron_exists(vertex_i)) {
+    //            // if no such neuron exist, it can only be output
+    //            assert(_outputs_i.contains(vertex_i));
+    //            const std::vector<size_t> in_vertices_i =
+    //                    _g.get_in_vertices_i(vertex_i);
+    //            // every output should only have 1 incomming vertex
+    //            std::cout << "debug: in_vertices_i.size()=" <<
+    //            in_vertices_i.size()
+    //                      << std::endl;
+    //            assert(in_vertices_i.size() == 1);
+    //            const size_t in_vertex_i = in_vertices_i[0];
+    //            std::cout << "debug: in_vertex_i=" << in_vertex_i <<
+    //            std::endl; return dfs_calculate_signal(in_vertex_i,
+    //            calculated_i, signals);
+    //        }
+    //
+    //        const Neuron n = _get_neuron(vertex_i);
+    //        double sum = n.bias;
+    //        const auto *v = _g.get_vertex(vertex_i);
+    //        assert(v != nullptr);
+    //        const std::set<size_t> in_edges_i = v->get_in_edges_i();
+    //        for (size_t in_edge_i : in_edges_i) {
+    //            const double weight = _get_connection(in_edge_i).weight;
+    //            const auto *e = _g.get_edge(in_edge_i);
+    //            assert(e != nullptr);
+    //            const size_t in_vertex_i = e->src_vertex_i;
+    //            const double signal =
+    //                    dfs_calculate_signal(in_vertex_i, calculated_i,
+    //                    signals);
+    //            signals[in_vertex_i] = signal;
+    //            sum += weight * signal;
+    //        }
+    //
+    //        calculated_i.insert(vertex_i);
+    //        return n.activation_f(sum);
+    //    }
 private:
     Settings _settings;
     grafiins::DAG<Neuron, Connection> _g;
@@ -351,252 +576,6 @@ private:
         }
         return _select_rnd_operation(ops);
     }
-
-    //    bool _is_operational()
-    //    {
-    //        assert(_inputs_i.size() == _settings.n_inputs);
-    //        assert(_outputs_i.size() == _settings.n_outputs);
-    //        assert(_neurons.size() <= _settings.max_n_neurons);
-    //
-    // #ifndef NDEBUG
-    //        for (size_t i : _inputs_i) {
-    //            assert(_g.get_vertex(i) != nullptr);
-    //            assert(!_outputs_i.contains(i));
-    //            bool found = false;
-    //            for (auto n : _neurons) {
-    //                if (n.graph_i == i) {
-    //                    found = true;
-    //                }
-    //            }
-    //            assert(!found);
-    //        }
-    //
-    //        for (size_t i : _outputs_i) {
-    //            assert(_g.get_vertex(i) != nullptr);
-    //            assert(!_inputs_i.contains(i));
-    //            bool found = false;
-    //            for (auto n : _neurons) {
-    //                if (n.graph_i == i) {
-    //                    found = true;
-    //                }
-    //            }
-    //            assert(!found);
-    //        }
-    //        for (auto &n : _neurons) {
-    //            assert(_g.get_vertex(n.graph_i) != nullptr);
-    //            assert(!_inputs_i.contains(n.graph_i));
-    //            assert(!_outputs_i.contains(n.graph_i));
-    //        }
-    // #endif
-    //
-    //        // every input has a connection to at least one output
-    //        for (size_t i : _inputs_i) {
-    //            if (!_g.are_connected_any({i}, _outputs_i)) {
-    //                return false;
-    //            }
-    //        }
-    //
-    //        // every output has a connection to at least one input
-    //        for (size_t i : _outputs_i) {
-    //            if (!_g.are_connected_any(_inputs_i, {i})) {
-    //                return false;
-    //            }
-    //        }
-    //
-    //        return true;
-    //    }
-public:
-    Network(Settings& in_settings) :
-        _settings(in_settings)
-    {
-        assert(_settings.n_inputs > 0);
-        assert(_settings.n_outputs > 0);
-        assert(_settings.max_n_hidden > 0);
-        assert(_settings.max_op_weight > 0);
-#ifndef NDEBUG
-        for (auto w : _settings.op_weights) {
-            assert(w <= _settings.max_op_weight);
-        }
-#endif
-        assert(_settings.min_init_weight <= _settings.max_init_weight);
-        assert(_settings.min_weight_step <= _settings.max_weight_step);
-        assert(_settings.min_bias_step <= _settings.max_bias_step);
-    }
-
-    // keep applying random operations until the network becomes operational
-    void restore_randomly()
-    {
-        // add missing inputs
-        for (size_t i = 0; i < _settings.n_inputs; i++) {
-            if (_inputs_i.at(i) == nullptr) {
-                _add_neuron(Neuron::Type::NEURON_INPUT, _settings.afid, i);
-            }
-        }
-        assert(_inputs_i.size() == _settings.n_inputs);
-
-        // add missing outputs
-        for (size_t i = 0; i < _settings.n_outputs; i++) {
-            if (_outputs_i.at(i) == nullptr) {
-                _add_neuron(Neuron::Type::NEURON_OUTPUT, _settings.afid, i);
-            }
-        }
-        assert(_outputs_i.size() == _settings.n_outputs);
-
-        // add connections and hidden neurons until the network is restored
-        while (!_is_operational()) {
-            std::cout << "debug: not operational" << std::endl;
-            const std::vector<Operation> allowed_ops =
-            { Operation::ADD_HIDDEN,
-              Operation::RM_HIDDEN,
-              Operation::ADD_CONNECTION,
-              Operation::RM_CONNECTION,
-              Operation::MV_CONNECTION_SRC,
-              Operation::MV_CONNECTION_DST,
-              Operation::STEP_WEIGHT,
-              Operation::STEP_BIAS,
-            }
-
-            while (!apply_operation(_random_operation()));
-        }
-    }
-
-    bool apply_operation(Operation op)
-    {
-        try {
-            switch (op) {
-                case Operation::ADD_INPUT:
-                    _add_neuron(Neuron::Type::NEURON_INPUT);
-                    break;
-                case Operation::RM_INPUT:
-                    _rm_neuron(Neuron::Type::NEURON_INPUT);
-                    break;
-                case Operation::ADD_OUTPUT:
-                    _add_neuron(Neuron::Type::NEURON_OUTPUT);
-                    break;
-                case Operation::RM_OUTPUT:
-                    _rm_neuron(Neuron::Type::NEURON_OUTPUT);
-                    break;
-                case Operation::ADD_HIDDEN:
-                    _add_neuron(Neuron::Type::NEURON_HIDDEN);
-                    break;
-                case Operation::RM_HIDDEN:
-                    _rm_neuron(Neuron::Type::NEURON_HIDDEN);
-                    break;
-                case Operation::ADD_CONNECTION:
-                    _add_connection();
-                    break;
-                case Operation::RM_CONNECTION:
-                    _rm_connection();
-                    break;
-                case Operation::MV_CONNECTION_SRC:
-                    _mv_connection_src();
-                    break;
-                case Operation::MV_CONNECTION_DST:
-                    _mv_connection_dst();
-                    break;
-                case Operation::STEP_WEIGHT:
-                    _step_weight();
-                    break;
-                case Operation::STEP_BIAS:
-                    _step_bias();
-                    break;
-
-                case Operation::N_OPS:
-                default:
-                    // this should never happen
-                    throw std::runtime_error("Invalid operation.")
-            }
-        }
-        catch (std::logic_error& e) {
-            return false;
-        }
-
-        return true;
-    }
-
-    //    std::vector<double> infer(std::vector<double> inputs)
-    //    {
-    //        std::cout << "debug: infer" << std::endl;
-    //
-    //        std::set<size_t> calculated_i;
-    //        std::map<size_t, double> signals;
-    //
-    //        // set input signals
-    //        assert(inputs.size() == _inputs_i.size());
-    //        for (size_t i = 0; i < _inputs_i.size(); i++) {
-    //            const size_t in_i = _get_input_i(i);
-    //            assert(!calculated_i.contains(in_i));
-    //            calculated_i.insert(in_i);
-    //            signals[in_i] = inputs[i];
-    //        }
-    //
-    //        // calculate signal for every output
-    //        std::vector<double> outputs;
-    //        for (size_t i = 0; i < _outputs_i.size(); i++) {
-    //            outputs.push_back(dfs_calculate_signal(
-    //                    _get_output_i(i), calculated_i, signals));
-    //        }
-    //
-    //        std::cout << "debug: calculated_i" << std::endl;
-    //        for (size_t i : calculated_i) {
-    //            std::cout << i << std::endl;
-    //        }
-    //
-    //        std::cout << "debug: signals" << std::endl;
-    //        std::map<size_t, double>::iterator it = signals.begin();
-    //        while (it != signals.end()) {
-    //            std::cout << it->first << ": " << it->second << std::endl;
-    //            it++;
-    //        }
-    //        return outputs;
-    //    }
-    //
-    //    // depth first search function that calculates signals of neurons
-    //    double dfs_calculate_signal(size_t vertex_i,
-    //                                std::set<size_t> &calculated_i,
-    //                                std::map<size_t, double> &signals)
-    //    {
-    //        std::cout << "debug: vertex_i=" << vertex_i << std::endl;
-    //        if (calculated_i.contains(vertex_i)) {
-    //            return signals[vertex_i];
-    //        }
-    //
-    //        if (!_neuron_exists(vertex_i)) {
-    //            // if no such neuron exist, it can only be output
-    //            assert(_outputs_i.contains(vertex_i));
-    //            const std::vector<size_t> in_vertices_i =
-    //                    _g.get_in_vertices_i(vertex_i);
-    //            // every output should only have 1 incomming vertex
-    //            std::cout << "debug: in_vertices_i.size()=" <<
-    //            in_vertices_i.size()
-    //                      << std::endl;
-    //            assert(in_vertices_i.size() == 1);
-    //            const size_t in_vertex_i = in_vertices_i[0];
-    //            std::cout << "debug: in_vertex_i=" << in_vertex_i <<
-    //            std::endl; return dfs_calculate_signal(in_vertex_i,
-    //            calculated_i, signals);
-    //        }
-    //
-    //        const Neuron n = _get_neuron(vertex_i);
-    //        double sum = n.bias;
-    //        const auto *v = _g.get_vertex(vertex_i);
-    //        assert(v != nullptr);
-    //        const std::set<size_t> in_edges_i = v->get_in_edges_i();
-    //        for (size_t in_edge_i : in_edges_i) {
-    //            const double weight = _get_connection(in_edge_i).weight;
-    //            const auto *e = _g.get_edge(in_edge_i);
-    //            assert(e != nullptr);
-    //            const size_t in_vertex_i = e->src_vertex_i;
-    //            const double signal =
-    //                    dfs_calculate_signal(in_vertex_i, calculated_i,
-    //                    signals);
-    //            signals[in_vertex_i] = signal;
-    //            sum += weight * signal;
-    //        }
-    //
-    //        calculated_i.insert(vertex_i);
-    //        return n.activation_f(sum);
-    //    }
 };
 
 }  // namespace tante

@@ -60,7 +60,7 @@ public:
     }
 
     Neuron(std::string label = "") :
-        Neuron(AF_RANDOM, label)
+        Neuron(AF_TANH, label)
     {
     }
 
@@ -116,6 +116,11 @@ public:
                std::string label = "") :
         Edge(src_i, dst_i, label),
         weight(weight)
+    {
+    }
+
+    Connection() :
+        Connection(0, 0, 0.0)
     {
     }
 };

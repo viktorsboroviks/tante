@@ -335,89 +335,69 @@ public:
         return true;
     }
 
-    //    std::vector<double> infer(std::vector<double> inputs)
-    //    {
-    //        std::cout << "debug: infer" << std::endl;
-    //
-    //        std::set<size_t> calculated_i;
-    //        std::map<size_t, double> signals;
-    //
-    //        // set input signals
-    //        assert(inputs.size() == _inputs_i.size());
-    //        for (size_t i = 0; i < _inputs_i.size(); i++) {
-    //            const size_t in_i = _get_input_i(i);
-    //            assert(!calculated_i.contains(in_i));
-    //            calculated_i.insert(in_i);
-    //            signals[in_i] = inputs[i];
-    //        }
-    //
-    //        // calculate signal for every output
-    //        std::vector<double> outputs;
-    //        for (size_t i = 0; i < _outputs_i.size(); i++) {
-    //            outputs.push_back(dfs_calculate_signal(
-    //                    _get_output_i(i), calculated_i, signals));
-    //        }
-    //
-    //        std::cout << "debug: calculated_i" << std::endl;
-    //        for (size_t i : calculated_i) {
-    //            std::cout << i << std::endl;
-    //        }
-    //
-    //        std::cout << "debug: signals" << std::endl;
-    //        std::map<size_t, double>::iterator it = signals.begin();
-    //        while (it != signals.end()) {
-    //            std::cout << it->first << ": " << it->second << std::endl;
-    //            it++;
-    //        }
-    //        return outputs;
-    //    }
-    //
-    //    // depth first search function that calculates signals of neurons
-    //    double dfs_calculate_signal(size_t vertex_i,
-    //                                std::set<size_t> &calculated_i,
-    //                                std::map<size_t, double> &signals)
-    //    {
-    //        std::cout << "debug: vertex_i=" << vertex_i << std::endl;
-    //        if (calculated_i.contains(vertex_i)) {
-    //            return signals[vertex_i];
-    //        }
-    //
-    //        if (!_neuron_exists(vertex_i)) {
-    //            // if no such neuron exist, it can only be output
-    //            assert(_outputs_i.contains(vertex_i));
-    //            const std::vector<size_t> in_vertices_i =
-    //                    _g.get_in_vertices_i(vertex_i);
-    //            // every output should only have 1 incomming vertex
-    //            std::cout << "debug: in_vertices_i.size()=" <<
-    //            in_vertices_i.size()
-    //                      << std::endl;
-    //            assert(in_vertices_i.size() == 1);
-    //            const size_t in_vertex_i = in_vertices_i[0];
-    //            std::cout << "debug: in_vertex_i=" << in_vertex_i <<
-    //            std::endl; return dfs_calculate_signal(in_vertex_i,
-    //            calculated_i, signals);
-    //        }
-    //
-    //        const Neuron n = _get_neuron(vertex_i);
-    //        double sum = n.bias;
-    //        const auto *v = _g.get_vertex(vertex_i);
-    //        assert(v != nullptr);
-    //        const std::set<size_t> in_edges_i = v->get_in_edges_i();
-    //        for (size_t in_edge_i : in_edges_i) {
-    //            const double weight = _get_connection(in_edge_i).weight;
-    //            const auto *e = _g.get_edge(in_edge_i);
-    //            assert(e != nullptr);
-    //            const size_t in_vertex_i = e->src_vertex_i;
-    //            const double signal =
-    //                    dfs_calculate_signal(in_vertex_i, calculated_i,
-    //                    signals);
-    //            signals[in_vertex_i] = signal;
-    //            sum += weight * signal;
-    //        }
-    //
-    //        calculated_i.insert(vertex_i);
-    //        return n.activation_f(sum);
-    //    }
+    std::vector<double> infer(const std::vector<double> inputs)
+    {
+        DEBUG("infering...");
+
+        std::set<size_t> calculated_i;
+        std::map<size_t, double> signals;
+
+        // set input signals
+        assert(inputs.size() == _inputs_i.size());
+        for (size_t in_i = 0; in_i < _inputs_i.size(); in_i++) {
+            const size_t vi = *_inputs_i.at(in_i);
+            assert(!calculated_i.contains(vi));
+            calculated_i.insert(vi);
+            signals[vi] = inputs[in_i];
+        }
+
+        // calculate signal for every output
+        std::vector<double> output_signals;
+        for (size_t out_i = 0; out_i < _outputs_i.size(); out_i++) {
+            output_signals.push_back(dfs_calculate_signal(
+                    *_outputs_i.at(out_i), calculated_i, signals));
+        }
+
+        return output_signals;
+    }
+
+    // depth first search function that calculates signals of neurons
+    double dfs_calculate_signal(size_t vertex_i,
+                                std::set<size_t>& calculated_i,
+                                std::map<size_t, double>& signals)
+    {
+        if (calculated_i.contains(vertex_i)) {
+            return signals[vertex_i];
+        }
+
+        // - get Neuron = vi, bias
+        // - sum = 0
+        // - for every in connection
+        //   - get weight
+        //   - get ei
+        //   - get src_vi
+        //   - get signal(src_vi)
+        //   - update sum
+        // - apply acceptance_f(sum)
+        const auto* v = _g.vertex_at(vertex_i);
+        assert(v != nullptr);
+        double sum = v->bias;
+        const std::set<size_t> in_edges_i = v->_in_edges_i;
+        for (size_t ei : in_edges_i) {
+            const auto* e = _g.edge_at(ei);
+            assert(e != nullptr);
+            const size_t src_vi = e->_src_vertex_i;
+            const double signal =
+                    dfs_calculate_signal(src_vi, calculated_i, signals);
+            signals[src_vi] = signal;
+            const double weight = e->weight;
+            sum += weight * signal;
+        }
+
+        calculated_i.insert(vertex_i);
+        return v->activation_f(sum);
+    }
+
 private:
     Settings _settings;
     grafiins::DAG<Neuron, Connection> _g;

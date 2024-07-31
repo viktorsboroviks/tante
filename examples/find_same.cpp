@@ -1,6 +1,11 @@
 #include "lapsa.hpp"
 #include "tante.hpp"
 
+#define DEBUG(x)                                  \
+    do {                                          \
+        std::cerr << "debug: " << x << std::endl; \
+    } while (0)
+
 tante::Settings g_ts{};
 const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
@@ -48,24 +53,19 @@ public:
 
     double get_energy()
     {
-        //        // if energy not calculated, do it now and store the result
-        //        std::cout << "debug: get_energy" << std::endl;
-        //        if (!_energy_calculated) {
-        //            std::cout << "debug: energy not calculated" << std::endl;
-        //            std::vector<double> inputs;
-        //            const double training_data = rand() % 1000;
-        //            std::cout << "debug: training_data=" << training_data <<
-        //            std::endl; inputs.push_back(training_data);
-        //            assert(inputs.size() == g_n_inputs);
-        //            std::vector<double> outputs = _n.infer(inputs);
-        //            assert(outputs.size() == g_n_outputs);
-        //            const double result = outputs[0];
-        //            _energy = std::abs(training_data - result);
-        //            _energy_calculated = true;
-        //        }
-        //        std::cout << "debug: _energy=" << _energy << std::endl;
-        //        return _energy;
-        return 0;
+        // if energy not calculated, do it now and store the result
+        if (!_energy_calculated) {
+            std::vector<double> inputs;
+            const double training_data = rand() % 1000;
+            inputs.push_back(training_data);
+            assert(inputs.size() == g_n_inputs);
+            const std::vector<double> outputs = _n.infer(inputs);
+            assert(outputs.size() == g_n_outputs);
+            const double result = outputs[0];
+            _energy = std::abs(training_data - result);
+            _energy_calculated = true;
+        }
+        return _energy;
     }
 
     void randomize()
@@ -129,27 +129,27 @@ int main()
             lapsa::init_log<MyState>,
             lapsa::randomize_state<MyState>,
     };
-    //    lsm.init_loop_functions = {
-    //            lapsa::propose_new_state<MyState>,
-    //            lapsa::record_init_temperature<MyState>,
-    //            lapsa::select_init_temperature_as_max<MyState>,
-    //            lapsa::init_run_progress<MyState>,
-    //            lapsa::check_init_done<MyState>,
-    //    };
-    //    lsm.run_loop_functions = {
-    //            lapsa::propose_new_state<MyState>,
-    //            lapsa::decide_to_cool<MyState>,
-    //            lapsa::cool_at_rate<MyState>,
-    //            lapsa::update_state<MyState>,
-    //            lapsa::check_run_done<MyState>,
-    //            lapsa::update_log<MyState>,
-    //            lapsa::print_run_progress<MyState>,
-    //    };
-    //    lsm.finalize_functions = {
-    //            lapsa::clear_run_progress<MyState>,
-    //            lapsa::print_stats<MyState>,
-    //            lapsa::create_stats_file<MyState>,
-    //    };
+    lsm.init_loop_functions = {
+            lapsa::propose_new_state<MyState>,
+            lapsa::record_init_temperature<MyState>,
+            lapsa::select_init_temperature_as_max<MyState>,
+            lapsa::init_run_progress<MyState>,
+            lapsa::check_init_done<MyState>,
+    };
+    lsm.run_loop_functions = {
+            lapsa::propose_new_state<MyState>,
+            lapsa::decide_to_cool<MyState>,
+            lapsa::cool_at_rate<MyState>,
+            lapsa::update_state<MyState>,
+            lapsa::check_run_done<MyState>,
+            lapsa::update_log<MyState>,
+            lapsa::print_run_progress<MyState>,
+    };
+    lsm.finalize_functions = {
+            lapsa::clear_run_progress<MyState>,
+            lapsa::print_stats<MyState>,
+            lapsa::create_stats_file<MyState>,
+    };
     lsm.run();
     return 0;
 }

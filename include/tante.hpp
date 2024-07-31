@@ -203,7 +203,8 @@ public:
         // add missing inputs
         for (size_t i = 0; i < _settings.n_inputs; i++) {
             if (_inputs_i.at(i) == nullptr) {
-                _add_neuron(Neuron::Type::NEURON_INPUT, _settings.afid, i);
+                _add_neuron(
+                        Neuron::Type::NEURON_INPUT, _settings.neuron_afid, i);
             }
         }
         assert(_inputs_i.size() == _settings.n_inputs);
@@ -211,24 +212,25 @@ public:
         // add missing outputs
         for (size_t i = 0; i < _settings.n_outputs; i++) {
             if (_outputs_i.at(i) == nullptr) {
-                _add_neuron(Neuron::Type::NEURON_OUTPUT, _settings.afid, i);
+                _add_neuron(
+                        Neuron::Type::NEURON_OUTPUT, _settings.neuron_afid, i);
             }
         }
         assert(_outputs_i.size() == _settings.n_outputs);
 
         // add connections and hidden neurons until the network is restored
-        while (!_is_operational()) {
+        while (!is_operational()) {
             std::cout << "debug: not operational" << std::endl;
-            const std::vector<Operation> allowed_ops =
-            { Operation::ADD_HIDDEN,
-              Operation::RM_HIDDEN,
-              Operation::ADD_CONNECTION,
-              Operation::RM_CONNECTION,
-              Operation::MV_CONNECTION_SRC,
-              Operation::MV_CONNECTION_DST,
-              Operation::STEP_WEIGHT,
-              Operation::STEP_BIAS,
-            }
+            const std::vector<Operation> allowed_ops = {
+                    Operation::ADD_HIDDEN,
+                    Operation::RM_HIDDEN,
+                    Operation::ADD_CONNECTION,
+                    Operation::RM_CONNECTION,
+                    Operation::MV_CONNECTION_SRC,
+                    Operation::MV_CONNECTION_DST,
+                    Operation::STEP_WEIGHT,
+                    Operation::STEP_BIAS,
+            };
 
             while (!apply_operation(get_random_operation()));
         }
@@ -249,10 +251,12 @@ public:
             op_value.push_back(op_weights_sum);
         }
 
-        const int rnd_value = rododendrs::rnd01() * op_weights_sum;
-        for (Operation op = 0; op < op_value.size(); op++) {
+        const size_t rnd_value = rododendrs::rnd01() * op_weights_sum;
+        assert(Operation::ADD_INPUT == 0);
+        assert(op_value.size() == Operation::N_OPS);
+        for (size_t op = Operation::ADD_INPUT; op < op_value.size(); op++) {
             if (rnd_value < op_value[op]) {
-                return op;
+                return (Operation)op;
             }
         }
 
@@ -262,29 +266,34 @@ public:
     Operation get_random_operation()
     {
         std::vector<Operation> ops;
-        for (Operation op = 0; op < Operation::N_OPS; op++) {
-            ops.push_back(op);
+        assert(Operation::ADD_INPUT == 0);
+        for (size_t op = 0; op < Operation::N_OPS; op++) {
+            ops.push_back((Operation)op);
         }
-        return _select_rnd_operation(ops);
+        return get_random_operation(ops);
     }
+
     bool apply_operation(Operation op)
     {
         try {
             switch (op) {
                 case Operation::ADD_INPUT:
-                    _add_neuron(Neuron::Type::NEURON_INPUT);
+                    _add_neuron(Neuron::Type::NEURON_INPUT,
+                                _settings.neuron_afid);
                     break;
                 case Operation::RM_INPUT:
                     _rm_neuron(Neuron::Type::NEURON_INPUT);
                     break;
                 case Operation::ADD_OUTPUT:
-                    _add_neuron(Neuron::Type::NEURON_OUTPUT);
+                    _add_neuron(Neuron::Type::NEURON_OUTPUT,
+                                _settings.neuron_afid);
                     break;
                 case Operation::RM_OUTPUT:
                     _rm_neuron(Neuron::Type::NEURON_OUTPUT);
                     break;
                 case Operation::ADD_HIDDEN:
-                    _add_neuron(Neuron::Type::NEURON_HIDDEN);
+                    _add_neuron(Neuron::Type::NEURON_HIDDEN,
+                                _settings.neuron_afid);
                     break;
                 case Operation::RM_HIDDEN:
                     _rm_neuron(Neuron::Type::NEURON_HIDDEN);
@@ -311,7 +320,7 @@ public:
                 case Operation::N_OPS:
                 default:
                     // this should never happen
-                    throw std::runtime_error("Invalid operation.")
+                    throw std::runtime_error("Invalid operation.");
             }
         }
         catch (std::logic_error& e) {
@@ -416,68 +425,70 @@ private:
                        const Neuron::AFID afid,
                        size_t i = garaza::I_RANDOM)
     {
-        garaza::Storage& s;
+        garaza::Storage<size_t>* s = nullptr;
         switch (t) {
             case Neuron::Type::NEURON_INPUT:
                 DEBUG("adding input...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.n_inputs);
-                s = _inputs_i;
+                s = &_inputs_i;
                 break;
             case Neuron::Type::NEURON_OUTPUT:
                 DEBUG("adding output...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.n_outputs);
-                s = _outputs_i;
+                s = &_outputs_i;
                 break;
             case Neuron::Type::NEURON_HIDDEN:
                 DEBUG("adding hidden...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.max_n_hidden);
-                s = _hidden_i;
+                s = &_hidden_i;
                 break;
             default:
                 throw std::runtime_error("Invalid neuron type.");
         }
 
-        assert(!s.contains_i(i));
+        assert(s != nullptr);
+        assert(!s->contains_i(i));
         const size_t vertex_i = _g.add_vertex(Neuron(afid));
-        s.add(vertex_i, i);
+        s->add(vertex_i, i);
         return i;
     }
 
     size_t _rm_neuron(const Neuron::Type t, size_t i = garaza::I_RANDOM)
     {
-        garaza::Storage& s;
+        garaza::Storage<size_t>* s = nullptr;
         switch (t) {
             case Neuron::Type::NEURON_INPUT:
                 DEBUG("removing input...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.n_inputs);
-                s = _inputs_i;
+                s = &_inputs_i;
                 break;
             case Neuron::Type::NEURON_OUTPUT:
                 DEBUG("removing output...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.n_outputs);
-                s = _outputs_i;
+                s = &_outputs_i;
                 break;
             case Neuron::Type::NEURON_HIDDEN:
                 DEBUG("removing hidden...");
                 assert(i == garaza::I_FIRST_AVAILABLE ||
                        i == garaza::I_RANDOM || i < _settings.max_n_hidden);
-                s = _hidden_i;
+                s = &_hidden_i;
                 break;
             default:
                 throw std::runtime_error("Invalid neuron type.");
         }
 
-        assert(s.contains_i(i));
+        assert(s != nullptr);
+        assert(s->contains_i(i));
         // this will also update records in edges and adjucent vertices in _g
-        const auto v* = _g.vertex_at(s[i]);
+        const auto* v = _g.vertex_at(*s->at(i));
         assert(v != nullptr);
-        _g.remove_vertex(s[i]);
-        s.remove(i);
+        _g.remove_vertex(*s->at(i));
+        s->remove(i);
         return i;
     }
 
@@ -497,7 +508,7 @@ private:
 
         if (_outputs_i.contains(src_vi) || _inputs_i.contains(dst_vi) ||
             dst_vi == src_vi) {
-            throw std::logic_error("Invalid combination of src_vi, dst_vi.")
+            throw std::logic_error("Invalid combination of src_vi, dst_vi.");
         }
 
         // add edge
@@ -519,7 +530,7 @@ private:
         DEBUG("Moving connection src...");
         const auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        const size_t dst_vi = e->dst_vertex_i;
+        const size_t dst_vi = e->_dst_vertex_i;
         const size_t new_ei = _add_connection(src_vi, dst_vi);
         _rm_connection(ei);
         return new_ei;
@@ -531,7 +542,7 @@ private:
         DEBUG("Moving connection dst...");
         const auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        const size_t src_vi = e->src_vertex_i;
+        const size_t src_vi = e->_src_vertex_i;
         const size_t new_ei = _add_connection(src_vi, dst_vi);
         _rm_connection(ei);
         return new_ei;
@@ -541,14 +552,14 @@ private:
     {
         DEBUG("Stepping weight...");
         if (_g.all_edges_i().empty()) {
-            throw std::logic_error("No connections to step weight.")
+            throw std::logic_error("No connections to step weight.");
         }
 
         if (ei == garaza::I_RANDOM) {
             ei = _g.rnd_edge_i();
         }
 
-        const auto* e = _g.edge_at(ei);
+        auto* e = _g.edge_at(ei);
         assert(e != nullptr);
         const double weight_step = rnd_in_range(_settings.min_weight_step,
                                                 _settings.max_weight_step);
@@ -559,18 +570,18 @@ private:
     {
         DEBUG("Stepping bias...");
         if (_g.all_vertices_i().empty()) {
-            throw std::logic_error("No neurons to step bias.")
+            throw std::logic_error("No neurons to step bias.");
         }
 
         if (vi == garaza::I_RANDOM) {
             vi = _g.rnd_vertex_i();
         }
 
-        const auto* v = _g.vertex_at(vi);
+        auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
         const double bias_step =
                 rnd_in_range(_settings.min_bias_step, _settings.max_bias_step);
-        e->bias += bias_step;
+        v->bias += bias_step;
     }
 };
 

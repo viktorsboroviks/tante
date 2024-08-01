@@ -6,7 +6,7 @@
 #include <queue>
 #include <vector>
 
-#define PRINT_DEBUGS
+// #define PRINT_DEBUGS
 #ifdef PRINT_DEBUGS
 #define DEBUG(x)                                  \
     do {                                          \
@@ -33,6 +33,8 @@ enum Operation {
     RM_CONNECTION,
     STEP_WEIGHT,
     STEP_BIAS,
+    RND_WEIGHT,
+    RND_BIAS,
     N_OPS,
 };
 
@@ -127,6 +129,12 @@ struct Settings {
     size_t op_weights[Operation::N_OPS] = {0};
     double min_init_weight = -1;
     double max_init_weight = 1;
+    bool limit_weight = false;
+    bool limit_bias = false;
+    double min_weight = -1;
+    double max_weight = 1;
+    double min_bias = -1;
+    double max_bias = 1;
     double min_weight_step = 1;
     double max_weight_step = -1;
     double min_bias_step = 1;
@@ -226,25 +234,20 @@ public:
         }
         assert(_outputs_i.size() == _settings.n_outputs);
 
-        std::cout << "debug: inputs and outputs added" << std::endl;
         // add connections and hidden neurons until the network is restored
         while (!is_operational()) {
             const std::vector<Operation> allowed_ops = {
                     Operation::ADD_HIDDEN,
                     Operation::RM_HIDDEN,
                     Operation::ADD_CONNECTION,
-                    //                    Operation::RM_CONNECTION,
+                    Operation::RM_CONNECTION,
                     Operation::STEP_WEIGHT,
                     Operation::STEP_BIAS,
+                    Operation::RND_WEIGHT,
+                    Operation::RND_BIAS,
             };
 
-            size_t di = 0;
-            while (!apply_operation(get_random_operation(allowed_ops))) {
-                // debug
-                di++;
-                if (di > 5)
-                    exit(-1);
-            };
+            while (!apply_operation(get_random_operation(allowed_ops))) {};
         }
         DEBUG("is operational");
     }
@@ -341,6 +344,18 @@ public:
                     return false;
                 }
                 _step_bias(_g.rnd_vertex_i());
+                return true;
+            case Operation::RND_WEIGHT:
+                if (_g.n_edges() == 0) {
+                    return false;
+                }
+                _rnd_weight(_g.rnd_edge_i());
+                return true;
+            case Operation::RND_BIAS:
+                if (_g.n_vertices() == 0) {
+                    return false;
+                }
+                _rnd_bias(_g.rnd_vertex_i());
                 return true;
 
             case Operation::N_OPS:
@@ -551,6 +566,10 @@ private:
         const double weight_step = rnd_in_range(_settings.min_weight_step,
                                                 _settings.max_weight_step);
         e->weight += weight_step;
+        if (_settings.limit_weight) {
+            e->weight = std::min(e->weight, _settings.max_weight);
+            e->weight = std::max(e->weight, _settings.min_weight);
+        }
     }
 
     void _step_bias(size_t vi)
@@ -563,6 +582,30 @@ private:
         const double bias_step =
                 rnd_in_range(_settings.min_bias_step, _settings.max_bias_step);
         v->bias += bias_step;
+        if (_settings.limit_bias) {
+            v->bias = std::min(v->bias, _settings.max_bias);
+            v->bias = std::max(v->bias, _settings.min_bias);
+        }
+    }
+
+    void _rnd_weight(size_t ei)
+    {
+        DEBUG("randomizing weight...");
+
+        assert(_g.n_edges() > 0);
+        auto* e = _g.edge_at(ei);
+        assert(e != nullptr);
+        e->weight = rnd_in_range(_settings.min_weight, _settings.max_weight);
+    }
+
+    void _rnd_bias(size_t vi)
+    {
+        DEBUG("randomizing bias...");
+
+        assert(_g.n_vertices() > 0);
+        auto* v = _g.vertex_at(vi);
+        assert(v != nullptr);
+        v->bias = rnd_in_range(_settings.min_bias, _settings.max_bias);
     }
 };
 

@@ -8,7 +8,7 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v4.0
+	cd grafiins; git checkout v5.1
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git
@@ -16,18 +16,9 @@ rododendrs:
 
 garaza:
 	git clone git@github.com:viktorsboroviks/garaza.git
-	cd garaza; git checkout v3.0
+	cd garaza; git checkout v3.1
 
-examples: find_same.o
-#find_sin.o
-
-#find_sin.o: lapsa grafiins examples/find_sin.cpp
-#	g++ -Wall -Wextra -Werror -Wpedantic \
-#		-std=c++20 -O3 \
-#		-I./include \
-#		-I./lapsa/include \
-#		-I./grafiins/include \
-#		examples/find_sin.cpp -o $@
+examples: find_same.o find_sin.o
 
 find_same.o: lapsa grafiins rododendrs garaza examples/find_same.cpp
 	g++ -Wall -Wextra -Werror -Wpedantic \
@@ -39,6 +30,16 @@ find_same.o: lapsa grafiins rododendrs garaza examples/find_same.cpp
 		-I./garaza/include \
 		examples/find_same.cpp -o $@
 
+find_sin.o: lapsa grafiins rododendrs garaza examples/find_sin.cpp
+	g++ -Wall -Wextra -Werror -Wpedantic \
+		-std=c++20 -O3 \
+		-I./include \
+		-I./lapsa/include \
+		-I./grafiins/include \
+		-I./rododendrs/include \
+		-I./garaza/include \
+		examples/find_sin.cpp -o $@
+
 benchmarks: acceptance_f.o
 
 acceptance_f.o: benchmarks/acceptance_f.cpp
@@ -48,9 +49,9 @@ acceptance_f.o: benchmarks/acceptance_f.cpp
 
 format: \
 		include/tante.hpp \
+		benchmarks/acceptance_f.cpp \
 		examples/find_same.cpp \
-		examples/find_sin.cpp \
-		benchmarks/acceptance_f.cpp
+		examples/find_sin.cpp
 	clang-format -i $^
 
 clean:

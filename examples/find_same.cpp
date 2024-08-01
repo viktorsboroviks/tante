@@ -1,16 +1,12 @@
+#include "garaza.hpp"
 #include "lapsa.hpp"
 #include "tante.hpp"
-
-#define DEBUG(x)                                  \
-    do {                                          \
-        std::cerr << "debug: " << x << std::endl; \
-    } while (0)
 
 tante::Settings g_ts{};
 const size_t g_n_inputs = 1;
 const size_t g_n_outputs = 1;
 const size_t g_max_n_hidden = 5;
-const size_t g_max_op_weight = 1;
+const size_t g_max_op_weight = 5;
 const double g_min_init_weight = -0.1;
 const double g_max_init_weight = 0.1;
 const double g_min_weight_step = -0.1;
@@ -19,12 +15,12 @@ const double g_min_bias_step = -0.1;
 const double g_max_bias_step = 0.1;
 
 const size_t g_op_w_add_input = 1;
-const size_t g_op_w_rm_input = 1;
+const size_t g_op_w_rm_input = 0;
 const size_t g_op_w_add_output = 1;
-const size_t g_op_w_rm_output = 1;
-const size_t g_op_w_add_hidden = 1;
+const size_t g_op_w_rm_output = 0;
+const size_t g_op_w_add_hidden = 5;
 const size_t g_op_w_rm_hidden = 1;
-const size_t g_op_w_add_connection = 1;
+const size_t g_op_w_add_connection = 5;
 const size_t g_op_w_rm_connection = 1;
 const size_t g_op_w_step_weight = 1;
 const size_t g_op_w_step_bias = 1;

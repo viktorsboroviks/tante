@@ -6,13 +6,19 @@
 #include <queue>
 #include <vector>
 
-#include "grafiins.hpp"
-#include "rododendrs.hpp"
-
+#define PRINT_DEBUGS
+#ifdef PRINT_DEBUGS
 #define DEBUG(x)                                  \
     do {                                          \
-        std::cerr << "debug: " << x << std::endl; \
+        std::cout << "debug: " << x << std::endl; \
     } while (0)
+#else
+#define DEBUG(x)
+#endif
+
+#include "garaza.hpp"
+#include "grafiins.hpp"
+#include "rododendrs.hpp"
 
 namespace tante {
 
@@ -44,14 +50,9 @@ public:
     ActivationF activation_f;
     double bias = 0;
 
-    Neuron(AFID afid, std::string label = "") :
+    Neuron(AFID afid = AF_TANH, std::string label = "") :
         Vertex(label),
         activation_f(_get_af(afid))
-    {
-    }
-
-    Neuron(std::string label = "") :
-        Neuron(AF_TANH, label)
     {
     }
 
@@ -166,11 +167,19 @@ public:
 
     bool is_operational()
     {
+        DEBUG("checking if operational...");
+
         assert(_inputs_i.size() <= _settings.n_inputs);
         assert(_outputs_i.size() <= _settings.n_outputs);
         assert(_hidden_i.size() <= _settings.max_n_hidden);
 
-        if (_inputs_i.size() == 0 || _outputs_i.size() == 0) {
+        if (_inputs_i.empty()) {
+            DEBUG("no inputs.");
+            return false;
+        }
+
+        if (_outputs_i.empty()) {
+            DEBUG("no outputs.");
             return false;
         }
 
@@ -184,6 +193,7 @@ public:
         // every input has a connection to at least one output
         for (size_t ivi : list_inputs_vi) {
             if (!_g.are_connected_any({ivi}, set_outputs_vi)) {
+                DEBUG("disconnected input found.");
                 return false;
             }
         }
@@ -191,6 +201,7 @@ public:
         // every output has a connection to at least one input
         for (size_t ovi : list_outputs_vi) {
             if (!_g.are_connected_any(set_inputs_vi, {ovi})) {
+                DEBUG("disconnected output found.");
                 return false;
             }
         }
@@ -215,20 +226,27 @@ public:
         }
         assert(_outputs_i.size() == _settings.n_outputs);
 
+        std::cout << "debug: inputs and outputs added" << std::endl;
         // add connections and hidden neurons until the network is restored
         while (!is_operational()) {
-            DEBUG("not operational");
             const std::vector<Operation> allowed_ops = {
                     Operation::ADD_HIDDEN,
                     Operation::RM_HIDDEN,
                     Operation::ADD_CONNECTION,
-                    Operation::RM_CONNECTION,
+                    //                    Operation::RM_CONNECTION,
                     Operation::STEP_WEIGHT,
                     Operation::STEP_BIAS,
             };
 
-            while (!apply_operation(get_random_operation()));
+            size_t di = 0;
+            while (!apply_operation(get_random_operation(allowed_ops))) {
+                // debug
+                di++;
+                if (di > 5)
+                    exit(-1);
+            };
         }
+        DEBUG("is operational");
     }
 
     // return random operation from the provided list, based on
@@ -237,19 +255,21 @@ public:
     {
         assert(!ops.empty());
 
-        std::vector<size_t> op_value;
+        std::vector<size_t> op_value(Operation::N_OPS, 0);
         size_t op_weights_sum = 0;
         for (auto& op : ops) {
             assert(op != Operation::N_OPS);
             assert(op < Operation::N_OPS);
-            op_weights_sum += op;
-            op_value.push_back(op_weights_sum);
+            op_weights_sum += _settings.op_weights[op];
+            op_value[op] = op_weights_sum;
         }
 
         const size_t rnd_value = rododendrs::rnd01() * op_weights_sum;
         assert(Operation::ADD_INPUT == 0);
-        assert(op_value.size() == Operation::N_OPS);
-        for (size_t op = Operation::ADD_INPUT; op < op_value.size(); op++) {
+        for (size_t op = Operation::ADD_INPUT; op < Operation::N_OPS; op++) {
+            if (op_value[op] == 0) {
+                continue;
+            }
             if (rnd_value < op_value[op]) {
                 return (Operation)op;
             }
@@ -299,7 +319,7 @@ public:
                 _rm_hidden(_hidden_i.rnd_i());
                 return true;
             case Operation::ADD_CONNECTION:
-                if (_g.n_vertices() == 0) {
+                if (_g.n_vertices() < 2) {
                     return false;
                 }
                 return _add_connection(_g.rnd_vertex_i(), _g.rnd_vertex_i())
@@ -386,7 +406,8 @@ public:
         for (size_t ei : in_edges_i) {
             const auto* e = _g.edge_at(ei);
             assert(e != nullptr);
-            const size_t src_vi = e->_src_vertex_i;
+            assert(e->_src_vertex_i.has_value());
+            const size_t src_vi = e->_src_vertex_i.value();
             const double signal =
                     dfs_calculate_signal(src_vi, calculated_i, signals);
             signals[src_vi] = signal;
@@ -427,6 +448,9 @@ private:
 
         assert(_inputs_i.contains_i(i));
         const size_t vi = *_inputs_i.at(i);
+        assert(!_outputs_i.contains(vi));
+        assert(!_hidden_i.contains(vi));
+        assert(_g.contains_vertex_i(vi));
         // this will also update records in edges and adjucent vertices in _g
         _g.remove_vertex(vi);
         _inputs_i.remove(i);
@@ -453,6 +477,9 @@ private:
 
         assert(_outputs_i.contains_i(i));
         const size_t vi = *_outputs_i.at(i);
+        assert(!_inputs_i.contains(vi));
+        assert(!_hidden_i.contains(vi));
+        assert(_g.contains_vertex_i(vi));
         // this will also update records in edges and adjucent vertices in _g
         _g.remove_vertex(vi);
         _outputs_i.remove(i);
@@ -479,6 +506,9 @@ private:
 
         assert(_hidden_i.contains_i(i));
         const size_t vi = *_hidden_i.at(i);
+        assert(!_inputs_i.contains(vi));
+        assert(!_outputs_i.contains(vi));
+        assert(_g.contains_vertex_i(vi));
         // this will also update records in edges and adjucent vertices in _g
         _g.remove_vertex(vi);
         _hidden_i.remove(i);
@@ -505,7 +535,7 @@ private:
     {
         DEBUG("removing connection...");
 
-        assert(garaza::vector_contains<size_t>(_g.all_edges_i(), ei));
+        assert(_g.contains_edge_i(ei));
 
         // this will also update records in adjucent vertices in _g
         return _g.remove_edge(ei);

@@ -26,8 +26,6 @@ const size_t g_op_w_add_hidden = 1;
 const size_t g_op_w_rm_hidden = 1;
 const size_t g_op_w_add_connection = 1;
 const size_t g_op_w_rm_connection = 1;
-const size_t g_op_w_mv_connection_src = 1;
-const size_t g_op_w_mv_connection_dst = 1;
 const size_t g_op_w_step_weight = 1;
 const size_t g_op_w_step_bias = 1;
 
@@ -103,10 +101,6 @@ void init_global_vars()
     g_ts.op_weights[tante::Operation::RM_HIDDEN] = g_op_w_rm_hidden;
     g_ts.op_weights[tante::Operation::ADD_CONNECTION] = g_op_w_add_connection;
     g_ts.op_weights[tante::Operation::RM_CONNECTION] = g_op_w_rm_connection;
-    g_ts.op_weights[tante::Operation::MV_CONNECTION_SRC] =
-            g_op_w_mv_connection_src;
-    g_ts.op_weights[tante::Operation::MV_CONNECTION_DST] =
-            g_op_w_mv_connection_dst;
     g_ts.op_weights[tante::Operation::STEP_WEIGHT] = g_op_w_step_weight;
     g_ts.op_weights[tante::Operation::STEP_BIAS] = g_op_w_step_bias;
 }

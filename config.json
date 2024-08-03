@@ -1,0 +1,34 @@
+{
+  "tante": {
+    "n_inputs": 1,
+    "n_outputs": 1,
+    "max_n_hidden": 10,
+    "min_init_weight": -10.0,
+    "max_init_weight": 10.0,
+    "limit_weight": true,
+    "limit_bias": true,
+    "min_weight": -100.0,
+    "max_weight": -100.0,
+    "min_bias": -100.0,
+    "max_bias": 100.0,
+    "min_weight_step": -10.0,
+    "max_weight_step": 10.0,
+    "min_bias_step": -10.0,
+    "max_bias_step": 10.0,
+    "max_op_weight": 100,
+    "op_weights": {
+      "add_input": 1,
+      "rm_input": 0,
+      "add_output": 1,
+      "rm_output": 0,
+      "add_hidden": 1,
+      "rm_hidden": 1,
+      "add_connection": 1,
+      "rm_connection": 1,
+      "step_weight": 10,
+      "step_bias": 10,
+      "rnd_weight": 10,
+      "rnd_bias": 10
+    }
+  }
+}

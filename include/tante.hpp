@@ -18,6 +18,7 @@
 
 #include "garaza.hpp"
 #include "grafiins.hpp"
+#include "iestade.hpp"
 #include "rododendrs.hpp"
 
 namespace tante {
@@ -43,7 +44,7 @@ public:
     typedef std::function<double(double)> ActivationF;
     enum AFID {
         AF_RANDOM = -1,
-        AF_TANH = 0,
+        AF_TANH   = 0,
         AF_SIGMOID,
         AF_RELU,
         N_AFS,
@@ -121,24 +122,61 @@ public:
 };
 
 struct Settings {
-    Neuron::AFID neuron_afid = Neuron::AFID::AF_SIGMOID;
-    size_t n_inputs = 0;
-    size_t n_outputs = 0;
-    size_t max_n_hidden = 0;
-    size_t max_op_weight = 100;
-    size_t op_weights[Operation::N_OPS] = {0};
-    double min_init_weight = -1;
-    double max_init_weight = 1;
-    bool limit_weight = false;
-    bool limit_bias = false;
-    double min_weight = -1;
-    double max_weight = 1;
-    double min_bias = -1;
-    double max_bias = 1;
-    double min_weight_step = 1;
-    double max_weight_step = -1;
-    double min_bias_step = 1;
-    double max_bias_step = -1;
+    size_t n_inputs                     = 1;
+    size_t n_outputs                    = 1;
+    size_t max_n_hidden                 = 10;
+    double min_init_weight              = -10;
+    double max_init_weight              = 10;
+    bool limit_weight                   = false;
+    bool limit_bias                     = false;
+    double min_weight                   = -100;
+    double max_weight                   = 100;
+    double min_bias                     = -100;
+    double max_bias                     = 100;
+    double min_weight_step              = -10;
+    double max_weight_step              = 10;
+    double min_bias_step                = -10;
+    double max_bias_step                = 10;
+    size_t max_op_weight                = 100;
+    size_t op_weights[Operation::N_OPS] = {1};
+    Neuron::AFID neuron_afid            = Neuron::AFID::AF_SIGMOID;
+
+    Settings() {}
+
+    // clang-format off
+    Settings(const std::string& config_filepath,
+             const std::string& key_path_prefix) :
+        n_inputs        (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_inputs")),
+        n_outputs       (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_outputs")),
+        max_n_hidden    (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_n_hidden")),
+        min_init_weight (iestade::double_from_json(config_filepath, key_path_prefix + "/min_init_weight")),
+        max_init_weight (iestade::double_from_json(config_filepath, key_path_prefix + "/max_init_weight")),
+        limit_weight    (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_weight")),
+        limit_bias      (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_bias")),
+        min_weight      (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight")),
+        max_weight      (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight")),
+        min_bias        (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias")),
+        max_bias        (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias")),
+        min_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight_step")),
+        max_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight_step")),
+        min_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias_step")),
+        max_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias_step")),
+        max_op_weight   (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_op_weight"))
+    {
+        op_weights[Operation::ADD_INPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_input");
+        op_weights[Operation::RM_INPUT]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_input");
+        op_weights[Operation::ADD_OUTPUT]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_output");
+        op_weights[Operation::RM_OUTPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_output");
+        op_weights[Operation::ADD_HIDDEN]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_hidden");
+        op_weights[Operation::RM_HIDDEN]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_hidden");
+        op_weights[Operation::ADD_CONNECTION]   = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_connection");
+        op_weights[Operation::RM_CONNECTION]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_connection");
+        op_weights[Operation::STEP_WEIGHT]      = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/step_weight");
+        op_weights[Operation::STEP_BIAS]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/step_bias");
+        op_weights[Operation::RND_WEIGHT]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rnd_weight");
+        op_weights[Operation::RND_BIAS]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rnd_bias");
+    }
+    // clang-format on
 };
 
 double rnd_in_range(double min, double max)
@@ -156,30 +194,32 @@ double rnd_in_range(double min, double max)
 
 class Network {
 public:
+    Settings settings;
+
     Network(Settings& in_settings) :
-        _settings(in_settings)
+        settings(in_settings)
     {
-        assert(_settings.n_inputs > 0);
-        assert(_settings.n_outputs > 0);
-        assert(_settings.max_n_hidden > 0);
-        assert(_settings.max_op_weight > 0);
+        assert(settings.n_inputs > 0);
+        assert(settings.n_outputs > 0);
+        assert(settings.max_n_hidden > 0);
+        assert(settings.max_op_weight > 0);
 #ifndef NDEBUG
-        for (auto w : _settings.op_weights) {
-            assert(w <= _settings.max_op_weight);
+        for (auto w : settings.op_weights) {
+            assert(w <= settings.max_op_weight);
         }
 #endif
-        assert(_settings.min_init_weight <= _settings.max_init_weight);
-        assert(_settings.min_weight_step <= _settings.max_weight_step);
-        assert(_settings.min_bias_step <= _settings.max_bias_step);
+        assert(settings.min_init_weight <= settings.max_init_weight);
+        assert(settings.min_weight_step <= settings.max_weight_step);
+        assert(settings.min_bias_step <= settings.max_bias_step);
     }
 
     bool is_operational()
     {
         DEBUG("checking if operational...");
 
-        assert(_inputs_i.size() <= _settings.n_inputs);
-        assert(_outputs_i.size() <= _settings.n_outputs);
-        assert(_hidden_i.size() <= _settings.max_n_hidden);
+        assert(_inputs_i.size() <= settings.n_inputs);
+        assert(_outputs_i.size() <= settings.n_outputs);
+        assert(_hidden_i.size() <= settings.max_n_hidden);
 
         if (_inputs_i.empty()) {
             DEBUG("no inputs.");
@@ -191,7 +231,7 @@ public:
             return false;
         }
 
-        const std::list<size_t> list_inputs_vi = _inputs_i.list();
+        const std::list<size_t> list_inputs_vi  = _inputs_i.list();
         const std::list<size_t> list_outputs_vi = _outputs_i.list();
         const std::set<size_t> set_inputs_vi{list_inputs_vi.begin(),
                                              list_inputs_vi.end()};
@@ -221,18 +261,18 @@ public:
     void restore_randomly()
     {
         // add missing inputs
-        const size_t add_n_inputs = _settings.n_inputs - _inputs_i.size();
+        const size_t add_n_inputs = settings.n_inputs - _inputs_i.size();
         for (size_t i = 0; i < add_n_inputs; i++) {
             _add_input();
         }
-        assert(_inputs_i.size() == _settings.n_inputs);
+        assert(_inputs_i.size() == settings.n_inputs);
 
         // add missing outputs
-        const size_t add_n_outputs = _settings.n_outputs - _outputs_i.size();
+        const size_t add_n_outputs = settings.n_outputs - _outputs_i.size();
         for (size_t i = 0; i < add_n_outputs; i++) {
             _add_output();
         }
-        assert(_outputs_i.size() == _settings.n_outputs);
+        assert(_outputs_i.size() == settings.n_outputs);
 
         // add connections and hidden neurons until the network is restored
         while (!is_operational()) {
@@ -263,7 +303,7 @@ public:
         for (auto& op : ops) {
             assert(op != Operation::N_OPS);
             assert(op < Operation::N_OPS);
-            op_weights_sum += _settings.op_weights[op];
+            op_weights_sum += settings.op_weights[op];
             op_value[op] = op_weights_sum;
         }
 
@@ -416,7 +456,7 @@ public:
         // - apply acceptance_f(sum)
         const auto* v = _g.vertex_at(vertex_i);
         assert(v != nullptr);
-        double sum = v->bias;
+        double sum                        = v->bias;
         const std::set<size_t> in_edges_i = v->_in_edges_i;
         for (size_t ei : in_edges_i) {
             const auto* e = _g.edge_at(ei);
@@ -425,7 +465,7 @@ public:
             const size_t src_vi = e->_src_vertex_i.value();
             const double signal =
                     dfs_calculate_signal(src_vi, calculated_i, signals);
-            signals[src_vi] = signal;
+            signals[src_vi]     = signal;
             const double weight = e->weight;
             sum += weight * signal;
         }
@@ -435,7 +475,6 @@ public:
     }
 
 private:
-    Settings _settings;
     grafiins::DAG<Neuron, Connection> _g;
     garaza::Storage<size_t> _inputs_i;
     garaza::Storage<size_t> _outputs_i;
@@ -446,14 +485,14 @@ private:
     {
         DEBUG("adding input...");
 
-        assert(_inputs_i.size() <= _settings.n_inputs);
-        if (_inputs_i.size() == _settings.n_inputs) {
+        assert(_inputs_i.size() <= settings.n_inputs);
+        if (_inputs_i.size() == settings.n_inputs) {
             return {};
         }
 
-        const size_t vi = _g.add_vertex(Neuron(_settings.neuron_afid));
+        const size_t vi   = _g.add_vertex(Neuron(settings.neuron_afid));
         const size_t in_i = _inputs_i.add(vi);
-        assert(_inputs_i.size() <= _settings.n_inputs);
+        assert(_inputs_i.size() <= settings.n_inputs);
         return in_i;
     }
 
@@ -475,14 +514,14 @@ private:
     {
         DEBUG("adding output...");
 
-        assert(_outputs_i.size() <= _settings.n_outputs);
-        if (_outputs_i.size() == _settings.n_outputs) {
+        assert(_outputs_i.size() <= settings.n_outputs);
+        if (_outputs_i.size() == settings.n_outputs) {
             return {};
         }
 
-        const size_t vi = _g.add_vertex(Neuron(_settings.neuron_afid));
+        const size_t vi    = _g.add_vertex(Neuron(settings.neuron_afid));
         const size_t out_i = _outputs_i.add(vi);
-        assert(_outputs_i.size() <= _settings.n_outputs);
+        assert(_outputs_i.size() <= settings.n_outputs);
         return out_i;
     }
 
@@ -504,14 +543,14 @@ private:
     {
         DEBUG("adding hidden...");
 
-        assert(_hidden_i.size() <= _settings.max_n_hidden);
-        if (_hidden_i.size() == _settings.max_n_hidden) {
+        assert(_hidden_i.size() <= settings.max_n_hidden);
+        if (_hidden_i.size() == settings.max_n_hidden) {
             return {};
         }
 
-        const size_t vi = _g.add_vertex(Neuron(_settings.neuron_afid));
+        const size_t vi    = _g.add_vertex(Neuron(settings.neuron_afid));
         const size_t hid_i = _hidden_i.add(vi);
-        assert(_hidden_i.size() <= _settings.max_n_hidden);
+        assert(_hidden_i.size() <= settings.max_n_hidden);
         return hid_i;
     }
 
@@ -541,8 +580,8 @@ private:
         }
 
         // add edge
-        const double init_weight = rnd_in_range(_settings.min_init_weight,
-                                                _settings.max_init_weight);
+        const double init_weight = rnd_in_range(settings.min_init_weight,
+                                                settings.max_init_weight);
         return _g.add_edge(Connection(src_vi, dst_vi, init_weight));
     }
 
@@ -563,12 +602,12 @@ private:
         assert(_g.n_edges() > 0);
         auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        const double weight_step = rnd_in_range(_settings.min_weight_step,
-                                                _settings.max_weight_step);
+        const double weight_step = rnd_in_range(settings.min_weight_step,
+                                                settings.max_weight_step);
         e->weight += weight_step;
-        if (_settings.limit_weight) {
-            e->weight = std::min(e->weight, _settings.max_weight);
-            e->weight = std::max(e->weight, _settings.min_weight);
+        if (settings.limit_weight) {
+            e->weight = std::min(e->weight, settings.max_weight);
+            e->weight = std::max(e->weight, settings.min_weight);
         }
     }
 
@@ -580,11 +619,11 @@ private:
         auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
         const double bias_step =
-                rnd_in_range(_settings.min_bias_step, _settings.max_bias_step);
+                rnd_in_range(settings.min_bias_step, settings.max_bias_step);
         v->bias += bias_step;
-        if (_settings.limit_bias) {
-            v->bias = std::min(v->bias, _settings.max_bias);
-            v->bias = std::max(v->bias, _settings.min_bias);
+        if (settings.limit_bias) {
+            v->bias = std::min(v->bias, settings.max_bias);
+            v->bias = std::max(v->bias, settings.min_bias);
         }
     }
 
@@ -595,7 +634,7 @@ private:
         assert(_g.n_edges() > 0);
         auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        e->weight = rnd_in_range(_settings.min_weight, _settings.max_weight);
+        e->weight = rnd_in_range(settings.min_weight, settings.max_weight);
     }
 
     void _rnd_bias(size_t vi)
@@ -605,7 +644,7 @@ private:
         assert(_g.n_vertices() > 0);
         auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
-        v->bias = rnd_in_range(_settings.min_bias, _settings.max_bias);
+        v->bias = rnd_in_range(settings.min_bias, settings.max_bias);
     }
 };
 

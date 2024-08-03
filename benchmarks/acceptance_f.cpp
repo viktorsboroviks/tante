@@ -55,9 +55,9 @@ int main()
         size_t total_runtime_ns = 0;
         for (size_t i = 0; i < N_RUNS; i++) {
             const double rnd = rand() / (double)rand();
-            auto start = std::chrono::steady_clock::now();
-            run_retval = t.f(rnd);
-            auto finish = std::chrono::steady_clock::now();
+            auto start       = std::chrono::steady_clock::now();
+            run_retval       = t.f(rnd);
+            auto finish      = std::chrono::steady_clock::now();
             total_runtime_ns +=
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
                             finish - start)

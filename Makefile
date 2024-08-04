@@ -16,7 +16,7 @@ iestade:
 
 lapsa:
 	git clone git@github.com:viktorsboroviks/lapsa.git
-	cd lapsa; git checkout v2.2
+	cd lapsa; git checkout v2.3
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git

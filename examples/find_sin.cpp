@@ -5,16 +5,9 @@
 #include "rododendrs.hpp"
 #include "tante.hpp"
 
-tante::Settings g_ts("examples/find_sin_config.json", "tante");
+const std::string CONFIG_PATH = "examples/find_sin_config.json";
 
-const size_t g_n_states               = 1000000;
-const size_t g_progress_update_period = 100;
-const double g_init_p_acceptance      = 0.97;
-const size_t g_init_t_log_len         = 100;
-const double g_cooling_rate           = (1 - 1e-4);
-const size_t g_cooling_round_len      = 1;
-
-const std::string g_log_filename = "find_same_log.csv";
+tante::Settings g_ts(CONFIG_PATH, "tante");
 
 class MyState : public lapsa::State {
 private:
@@ -62,15 +55,7 @@ public:
 
 int main()
 {
-    lapsa::Settings ls{};
-    ls.n_states               = g_n_states;
-    ls.progress_update_period = g_progress_update_period;
-    ls.init_p_acceptance      = g_init_p_acceptance;
-    ls.init_t_log_len         = g_init_t_log_len;
-    ls.cooling_rate           = g_cooling_rate;
-    ls.cooling_round_len      = g_cooling_round_len;
-    ls.log_filename           = g_log_filename;
-
+    lapsa::Settings ls{CONFIG_PATH, "lapsa"};
     lapsa::StateMachine<MyState> lsm{ls};
     lsm.init_functions = {
             lapsa::init_log<MyState>,

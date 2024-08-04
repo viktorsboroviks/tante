@@ -1,4 +1,16 @@
 {
+  "lapsa": {
+    "n_states": 1000000,
+    "init_p_acceptance": 0.97,
+    "init_t_log_len": 100,
+    "cooling_rate": 0.9999,
+    "cooling_round_len": 1,
+    "e_sma_fast_len": 100,
+    "e_sma_slow_len": 50,
+    "progress_update_period": 100,
+    "log_filename": "log.csv",
+    "stats_filename": "stats.txt"
+  },
   "tante": {
     "n_inputs": 1,
     "n_outputs": 1,
@@ -27,8 +39,8 @@
       "rm_connection": 1,
       "step_weight": 10,
       "step_bias": 10,
-      "rnd_weight": 10,
-      "rnd_bias": 10
+      "rnd_weight": 0,
+      "rnd_bias": 0
     }
   }
 }

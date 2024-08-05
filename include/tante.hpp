@@ -52,7 +52,7 @@ public:
     AFID afid;
     double bias = 0;
 
-    Neuron(AFID afid = AF_TANH, std::string label = "") :
+    Neuron(AFID afid = AF_SIGMOID, std::string label = "") :
         Vertex(label),
         afid(afid)
     {
@@ -78,28 +78,52 @@ public:
         return _activation_f_by_id(in, afid);
     }
 
-    std::map<std::string, std::string> serialize()
+    static std::string afid_to_str(AFID in)
     {
-        std::map<std::string, std::string> m = grafiins::Vertex::serialize();
-        switch (afid) {
+        switch (in) {
             case AFID::AF_RANDOM:
-                m["activation_function"] = "random";
-                break;
+                return "random";
             case AFID::AF_TANH:
-                m["activation_function"] = "tanh";
-                break;
+                return "tanh";
             case AFID::AF_SIGMOID:
-                m["activation_function"] = "sigmoid";
-                break;
+                return "sigmoid";
             case AFID::AF_RELU:
-                m["activation_function"] = "relu";
-                break;
+                return "relu";
             default:
                 // this should not happen
                 assert(false);
                 break;
         }
-        m["bias"] = std::to_string(bias);
+        // this should not happen
+        assert(false);
+        return "";
+    }
+
+    static AFID str_to_afid(const std::string& in)
+    {
+        if (in == "random") {
+            return AFID::AF_RANDOM;
+        }
+        else if (in == "tanh") {
+            return AFID::AF_TANH;
+        }
+        else if (in == "sigmoid") {
+            return AFID::AF_SIGMOID;
+        }
+        else if (in == "relu") {
+            return AFID::AF_RELU;
+        }
+
+        // this should not happen
+        assert(false);
+        return AFID::AF_SIGMOID;
+    }
+
+    std::map<std::string, std::string> serialize()
+    {
+        std::map<std::string, std::string> m = grafiins::Vertex::serialize();
+        m["activation_function"]             = afid_to_str(afid);
+        m["bias"]                            = std::to_string(bias);
         return m;
     }
 
@@ -147,7 +171,7 @@ public:
 
     std::map<std::string, std::string> serialize()
     {
-        std::map<std::string, std::string> m = this->serialize();
+        std::map<std::string, std::string> m = grafiins::Edge::serialize();
 
         m["weight"] = std::to_string(weight);
         return m;
@@ -194,7 +218,8 @@ struct Settings {
         max_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight_step")),
         min_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias_step")),
         max_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias_step")),
-        max_op_weight   (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_op_weight"))
+        max_op_weight   (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_op_weight")),
+        neuron_afid     (Neuron::str_to_afid(iestade::string_from_json(config_filepath, key_path_prefix + "/activation_function")))
     {
         op_weights[Operation::ADD_INPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_input");
         op_weights[Operation::RM_INPUT]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_input");
@@ -447,8 +472,9 @@ public:
     {
         DEBUG("infering...");
 
+        // erase previous calculation result
+        _signals.clear();
         std::set<size_t> calculated_i;
-        std::map<size_t, double> signals;
 
         // set input signals
         assert(inputs.size() == _inputs_i.size());
@@ -456,14 +482,17 @@ public:
             const size_t vi = *_inputs_i.at(in_i);
             assert(!calculated_i.contains(vi));
             calculated_i.insert(vi);
-            signals[vi] = inputs[in_i];
+            _signals[vi] = inputs[in_i];
         }
 
         // calculate signal for every output
         std::vector<double> output_signals;
         for (size_t out_i = 0; out_i < _outputs_i.size(); out_i++) {
-            output_signals.push_back(dfs_calculate_signal(
-                    *_outputs_i.at(out_i), calculated_i, signals));
+            const size_t vi = *_outputs_i.at(out_i);
+            const double signal =
+                    dfs_calculate_signal(vi, calculated_i, _signals);
+            output_signals.push_back(signal);
+            _signals[vi] = signal;
         }
 
         return output_signals;
@@ -507,11 +536,20 @@ public:
         return v->activation_f(sum);
     }
 
+    void to_csv(const std::string& neurons_filepath,
+                const std::string& connections_filepath,
+                const std::string& signals_filepath)
+    {
+        _g.to_csv(neurons_filepath, connections_filepath);
+        _signals_to_csv(signals_filepath);
+    }
+
 private:
     grafiins::DAG<Neuron, Connection> _g;
     garaza::Storage<size_t> _inputs_i;
     garaza::Storage<size_t> _outputs_i;
     garaza::Storage<size_t> _hidden_i;
+    std::map<size_t, double> _signals;
     // connections are stored within _g
 
     std::optional<size_t> _add_input()
@@ -678,6 +716,28 @@ private:
         auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
         v->bias = rnd_in_range(settings.min_bias, settings.max_bias);
+    }
+
+    void _signals_to_csv(const std::string& signals_filepath)
+    {
+        assert(!_signals.empty());
+
+        std::ofstream f(signals_filepath);
+        f.is_open();
+
+        // generate title row
+        f << "vertex_i,signal" << std::endl;
+
+        // generate content
+        for (std::map<size_t, double>::iterator it = _signals.begin();
+             it != _signals.end();
+             it++) {
+            assert(_g.contains_vertex_i(it->first));
+            f << it->first << ",";
+            f << it->second << std::endl;
+        }
+
+        f.close();
     }
 };
 

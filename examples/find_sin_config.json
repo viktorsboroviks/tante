@@ -9,9 +9,11 @@
     "e_sma_slow_len": 50,
     "progress_update_period": 100,
     "log_filename": "log.csv",
-    "stats_filename": "stats.txt"
+    "stats_filename": "stats.txt",
+    "n_reports": 200
   },
   "tante": {
+    "activation_function": "sigmoid",
     "n_inputs": 1,
     "n_outputs": 1,
     "max_n_hidden": 10,
@@ -42,5 +44,11 @@
       "rnd_weight": 0,
       "rnd_bias": 0
     }
+  },
+  "reports": {
+    "dir_name": "reports",
+    "neurons_file_prefix": "neurons_",
+    "connections_file_prefix": "connections_",
+    "signals_file_prefix": "signals_"
   }
 }

@@ -41,7 +41,6 @@ enum Operation {
 
 class Neuron : public grafiins::Vertex {
 public:
-    typedef std::function<double(double)> ActivationF;
     enum AFID {
         AF_RANDOM = -1,
         AF_TANH   = 0,
@@ -50,12 +49,12 @@ public:
         N_AFS,
     };
 
-    ActivationF activation_f;
+    AFID afid;
     double bias = 0;
 
     Neuron(AFID afid = AF_TANH, std::string label = "") :
         Vertex(label),
-        activation_f(_get_af(afid))
+        afid(afid)
     {
     }
 
@@ -74,31 +73,57 @@ public:
         return std::max(0.0, in);
     }
 
+    double activation_f(double in) const
+    {
+        return _activation_f_by_id(in, afid);
+    }
+
+    std::map<std::string, std::string> serialize()
+    {
+        std::map<std::string, std::string> m = grafiins::Vertex::serialize();
+        switch (afid) {
+            case AFID::AF_RANDOM:
+                m["activation_function"] = "random";
+                break;
+            case AFID::AF_TANH:
+                m["activation_function"] = "tanh";
+                break;
+            case AFID::AF_SIGMOID:
+                m["activation_function"] = "sigmoid";
+                break;
+            case AFID::AF_RELU:
+                m["activation_function"] = "relu";
+                break;
+            default:
+                // this should not happen
+                assert(false);
+                break;
+        }
+        m["bias"] = std::to_string(bias);
+        return m;
+    }
+
 private:
-    ActivationF _get_af(AFID afid)
+    double _activation_f_by_id(double in, AFID in_afid) const
     {
         const int rnd_afid = rododendrs::rnd01() * (double)N_AFS;
-        ActivationF af;
-        switch (afid) {
+        switch (in_afid) {
             case AF_RANDOM:
-                af = _get_af((AFID)rnd_afid);
-                break;
+                return _activation_f_by_id(in, (AFID)rnd_afid);
             case AF_TANH:
-                af = af_tanh;
-                break;
+                return af_tanh(in);
             case AF_SIGMOID:
-                af = af_sigmoid;
-                break;
+                return af_sigmoid(in);
             case AF_RELU:
-                af = af_relu;
-                break;
+                return af_relu(in);
             case N_AFS:
             default:
                 assert(false);
                 break;
         }
 
-        return af;
+        assert(false);
+        return -1.0;
     }
 };
 
@@ -118,6 +143,14 @@ public:
     Connection() :
         Connection(0, 0, 0.0)
     {
+    }
+
+    std::map<std::string, std::string> serialize()
+    {
+        std::map<std::string, std::string> m = this->serialize();
+
+        m["weight"] = std::to_string(weight);
+        return m;
     }
 };
 

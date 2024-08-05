@@ -75,6 +75,11 @@ int main()
             lapsa::update_state<MyState>,
             lapsa::check_run_done<MyState>,
             lapsa::update_log<MyState>,
+            // save graph to svg (not every, see schedule from experiments)
+            // - edges
+            // - vertices
+            // - signals
+            // save energy, temperature (take from log?)
             lapsa::print_run_progress<MyState>,
     };
     lsm.finalize_functions = {

@@ -12,11 +12,11 @@ all: examples benchmarks
 
 iestade:
 	git clone git@github.com:viktorsboroviks/iestade.git
-	cd iestade; git checkout v2.1
+	cd iestade; git checkout v2.3
 
 lapsa:
 	git clone git@github.com:viktorsboroviks/lapsa.git
-	cd lapsa; git checkout v2.3
+	cd lapsa; git checkout v2.4
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git

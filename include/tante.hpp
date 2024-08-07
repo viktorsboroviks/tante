@@ -235,19 +235,6 @@ struct Settings {
     // clang-format on
 };
 
-double rnd_in_range(double min, double max)
-{
-    if (min == max) {
-        return min;
-    }
-
-    assert(min < max);
-    const double retval = (rododendrs::rnd01() * (max - min)) + min;
-    assert(retval >= min);
-    assert(retval <= max);
-    return retval;
-}
-
 class Network {
 public:
     Settings settings;
@@ -465,7 +452,7 @@ public:
         DEBUG("infering...");
 
         // erase previous calculation result
-        _signals.clear();
+        std::map<size_t, double> signals;
         std::set<size_t> calculated_i;
 
         // set input signals
@@ -474,7 +461,7 @@ public:
             const size_t vi = *_inputs_i.at(in_i);
             assert(!calculated_i.contains(vi));
             calculated_i.insert(vi);
-            _signals[vi] = inputs[in_i];
+            signals[vi] = inputs[in_i];
         }
 
         // calculate signal for every output
@@ -482,9 +469,9 @@ public:
         for (size_t out_i = 0; out_i < _outputs_i.size(); out_i++) {
             const size_t vi = *_outputs_i.at(out_i);
             const double signal =
-                    dfs_calculate_signal(vi, calculated_i, _signals);
+                    dfs_calculate_signal(vi, calculated_i, signals);
             output_signals.push_back(signal);
-            _signals[vi] = signal;
+            signals[vi] = signal;
         }
 
         return output_signals;
@@ -529,11 +516,9 @@ public:
     }
 
     void to_csv(const std::string& neurons_filepath,
-                const std::string& connections_filepath,
-                const std::string& signals_filepath)
+                const std::string& connections_filepath)
     {
         _g.to_csv(neurons_filepath, connections_filepath);
-        _signals_to_csv(signals_filepath);
     }
 
 private:
@@ -541,7 +526,6 @@ private:
     garaza::Storage<size_t> _inputs_i;
     garaza::Storage<size_t> _outputs_i;
     garaza::Storage<size_t> _hidden_i;
-    std::map<size_t, double> _signals;
     // connections are stored within _g
 
     std::optional<size_t> _add_input()
@@ -643,8 +627,8 @@ private:
         }
 
         // add edge
-        const double init_weight = rnd_in_range(settings.min_init_weight,
-                                                settings.max_init_weight);
+        const double init_weight = rododendrs::rnd_in_range(
+                settings.min_init_weight, settings.max_init_weight);
         return _g.add_edge(Connection(src_vi, dst_vi, init_weight));
     }
 
@@ -665,8 +649,8 @@ private:
         assert(_g.n_edges() > 0);
         auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        const double weight_step = rnd_in_range(settings.min_weight_step,
-                                                settings.max_weight_step);
+        const double weight_step = rododendrs::rnd_in_range(
+                settings.min_weight_step, settings.max_weight_step);
         e->weight += weight_step;
         if (settings.limit_weight) {
             e->weight = std::min(e->weight, settings.max_weight);
@@ -681,8 +665,8 @@ private:
         assert(_g.n_vertices() > 0);
         auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
-        const double bias_step =
-                rnd_in_range(settings.min_bias_step, settings.max_bias_step);
+        const double bias_step = rododendrs::rnd_in_range(
+                settings.min_bias_step, settings.max_bias_step);
         v->bias += bias_step;
         if (settings.limit_bias) {
             v->bias = std::min(v->bias, settings.max_bias);
@@ -697,7 +681,8 @@ private:
         assert(_g.n_edges() > 0);
         auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        e->weight = rnd_in_range(settings.min_weight, settings.max_weight);
+        e->weight = rododendrs::rnd_in_range(settings.min_weight,
+                                             settings.max_weight);
     }
 
     void _rnd_bias(size_t vi)
@@ -707,29 +692,8 @@ private:
         assert(_g.n_vertices() > 0);
         auto* v = _g.vertex_at(vi);
         assert(v != nullptr);
-        v->bias = rnd_in_range(settings.min_bias, settings.max_bias);
-    }
-
-    void _signals_to_csv(const std::string& signals_filepath)
-    {
-        assert(!_signals.empty());
-
-        std::ofstream f(signals_filepath);
-        f.is_open();
-
-        // generate title row
-        f << "vertex_i,signal" << std::endl;
-
-        // generate content
-        for (std::map<size_t, double>::iterator it = _signals.begin();
-             it != _signals.end();
-             it++) {
-            assert(_g.contains_vertex_i(it->first));
-            f << it->first << ",";
-            f << it->second << std::endl;
-        }
-
-        f.close();
+        v->bias =
+                rododendrs::rnd_in_range(settings.min_bias, settings.max_bias);
     }
 };
 

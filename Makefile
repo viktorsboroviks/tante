@@ -1,6 +1,7 @@
 .PHONY: \
 	all \
 	examples \
+	run_find_sin \
 	benchmarks \
 	format \
 	clang-format \
@@ -16,15 +17,15 @@ iestade:
 
 lapsa:
 	git clone git@github.com:viktorsboroviks/lapsa.git
-	cd lapsa; git checkout v2.4
+	cd lapsa; git checkout v2.5
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v5.1
+	cd grafiins; git checkout v5.2
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git
-	cd rododendrs; git checkout v1.1
+	cd rododendrs; git checkout v1.3
 
 garaza:
 	git clone git@github.com:viktorsboroviks/garaza.git
@@ -54,6 +55,14 @@ find_sin.o: iestade lapsa grafiins rododendrs garaza examples/find_sin.cpp
 		-I./garaza/include \
 		examples/find_sin.cpp -o $@
 
+output:
+	mkdir -p output
+
+run_find_sin: output find_sin.o
+	rm -rf output/*
+	mkdir -p reports
+	./find_sin.o
+
 benchmarks: acceptance_f.o
 
 acceptance_f.o: benchmarks/acceptance_f.cpp
@@ -82,6 +91,7 @@ clean:
 	rm -rf `find . -name "*.o"`
 	rm -rf `find . -name "*.csv"`
 	rm -rf `find . -name "*.txt"`
+	rm -rf output
 
 distclean: clean
 	rm -rf iestade

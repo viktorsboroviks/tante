@@ -15,7 +15,7 @@ tante::Settings g_ts(CONFIG_PATH, "tante");
 const std::string g_reports_dir_name                = iestade::string_from_json(CONFIG_PATH, "reports/dir_name");
 const std::string g_reports_neurons_file_prefix     = iestade::string_from_json(CONFIG_PATH, "reports/neurons_file_prefix");
 const std::string g_reports_connections_file_prefix = iestade::string_from_json(CONFIG_PATH, "reports/connections_file_prefix");
-const std::string g_reports_signals_file_prefix     = iestade::string_from_json(CONFIG_PATH, "reports/signals_file_prefix");
+const std::string g_reports_results_file_prefix     = iestade::string_from_json(CONFIG_PATH, "reports/results_file_prefix");
 
 std::deque<double> g_training_data;
 double g_training_data_min                          = iestade::double_from_json(CONFIG_PATH, "training/data_min");
@@ -27,7 +27,8 @@ size_t g_training_update_period                     = iestade::size_t_from_json(
 
 class MyState : public lapsa::State {
 private:
-    double _used_training_data0 = 0;
+    std::vector<double> _last_inputs;
+    std::vector<double> _last_outputs;
 
 public:
     tante::Network net;
@@ -41,25 +42,51 @@ public:
     double get_energy()
     {
         // if energy not calculated, do it now and store the result
-        if (!_energy_calculated ||
-            _used_training_data0 != g_training_data[0]) {
+        if (!_energy_calculated || _last_inputs[0] != g_training_data[0]) {
             assert(g_training_data.size() == g_training_data_n);
-            _energy              = 0;
-            _used_training_data0 = g_training_data[0];
-            std::vector<double> results;
+            _energy = 0;
+            _last_inputs.clear();
+            _last_outputs.clear();
             for (size_t i = 0; i < g_training_data.size(); i++) {
+                _last_inputs.push_back(g_training_data[i]);
                 std::vector<double> inputs;
                 inputs.push_back(g_training_data[i]);
                 assert(inputs.size() == net.settings.n_inputs);
-                const std::vector<double> outputs = net.infer(inputs);
-                assert(outputs.size() == net.settings.n_outputs);
-                results.push_back(outputs[0]);
+                _last_outputs.push_back(net.infer(inputs)[0]);
             }
             _energy = rododendrs::rrmse<std::vector, std::deque>(
-                    results, g_training_data);
+                    _last_outputs, g_training_data);
             _energy_calculated = true;
         }
         return _energy;
+    }
+
+    void to_csv(const std::string& results_filepath)
+    {
+        assert(!_last_inputs.empty());
+        assert(!_last_outputs.empty());
+        assert(_last_inputs.size() == _last_outputs.size());
+
+        std::ofstream f(results_filepath);
+        f.is_open();
+
+        // metadata
+        f << "# energy: " << get_energy() << std::endl;
+
+        // generate title row
+        f << "inference_i,signal_input,signal_output,signal_correct"
+          << std::endl;
+
+        // generate content
+        for (size_t i = 0; i < _last_inputs.size(); i++) {
+            f << i << ",";
+            f << std::fixed;
+            f << _last_inputs[i] << ",";
+            f << _last_outputs[i] << ",";
+            f << std::sin(_last_inputs[i]) << std::endl;
+        }
+
+        f.close();
     }
 
     void randomize()
@@ -114,6 +141,7 @@ void create_report_files(lapsa::Context<TState>& c)
     assert(g_reports_dir_name != "");
     assert(g_reports_neurons_file_prefix != "");
     assert(g_reports_connections_file_prefix != "");
+    assert(g_reports_results_file_prefix != "");
 
     if (!std::filesystem::exists(g_reports_dir_name)) {
         std::filesystem::create_directory(g_reports_dir_name);
@@ -132,14 +160,13 @@ void create_report_files(lapsa::Context<TState>& c)
                          << g_reports_connections_file_prefix
                          << std::setfill('0') << std::setw(n_states_strlen)
                          << c.state_i << ".csv";
-    std::stringstream signals_filename;
-    signals_filename << g_reports_dir_name << "/"
-                     << g_reports_signals_file_prefix << std::setfill('0')
+    std::stringstream results_filename;
+    results_filename << g_reports_dir_name << "/"
+                     << g_reports_results_file_prefix << std::setfill('0')
                      << std::setw(n_states_strlen) << c.state_i << ".csv";
 
-    c.state.net.to_csv(neurons_filename.str(),
-                       connections_filename.str(),
-                       signals_filename.str());
+    c.state.net.to_csv(neurons_filename.str(), connections_filename.str());
+    c.state.to_csv(results_filename.str());
 }
 
 int main()

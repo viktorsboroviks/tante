@@ -1,4 +1,5 @@
 #include <cmath>
+#include <deque>
 #include <filesystem>
 
 #include "garaza.hpp"
@@ -15,9 +16,19 @@ const std::string g_reports_dir_name                = iestade::string_from_json(
 const std::string g_reports_neurons_file_prefix     = iestade::string_from_json(CONFIG_PATH, "reports/neurons_file_prefix");
 const std::string g_reports_connections_file_prefix = iestade::string_from_json(CONFIG_PATH, "reports/connections_file_prefix");
 const std::string g_reports_signals_file_prefix     = iestade::string_from_json(CONFIG_PATH, "reports/signals_file_prefix");
+
+std::deque<double> g_training_data;
+double g_training_data_min                          = iestade::double_from_json(CONFIG_PATH, "training/data_min");
+double g_training_data_max                          = iestade::double_from_json(CONFIG_PATH, "training/data_max");
+size_t g_training_data_n                            = iestade::size_t_from_json(CONFIG_PATH, "training/data_n");
+size_t g_training_update_n                          = iestade::size_t_from_json(CONFIG_PATH, "training/update_n");
+size_t g_training_update_period                     = iestade::size_t_from_json(CONFIG_PATH, "training/update_period");
 // clang-format on
 
 class MyState : public lapsa::State {
+private:
+    double _used_training_data0 = 0;
+
 public:
     tante::Network net;
 
@@ -30,19 +41,23 @@ public:
     double get_energy()
     {
         // if energy not calculated, do it now and store the result
-        double prev_training_data = 0;
-        if (!_energy_calculated) {
-            std::vector<double> inputs;
-            const double training_data = rododendrs::rnd01() * 1000.0;
-            assert(training_data != prev_training_data);
-            prev_training_data = training_data;
-            inputs.push_back(training_data);
-            assert(inputs.size() == net.settings.n_inputs);
-            const std::vector<double> outputs = net.infer(inputs);
-            assert(outputs.size() == net.settings.n_outputs);
-            const double result = outputs[0];
-            _energy             = std::abs(std::sin(training_data) - result);
-            _energy_calculated  = true;
+        if (!_energy_calculated ||
+            _used_training_data0 != g_training_data[0]) {
+            assert(g_training_data.size() == g_training_data_n);
+            _energy              = 0;
+            _used_training_data0 = g_training_data[0];
+            std::vector<double> results;
+            for (size_t i = 0; i < g_training_data.size(); i++) {
+                std::vector<double> inputs;
+                inputs.push_back(g_training_data[i]);
+                assert(inputs.size() == net.settings.n_inputs);
+                const std::vector<double> outputs = net.infer(inputs);
+                assert(outputs.size() == net.settings.n_outputs);
+                results.push_back(outputs[0]);
+            }
+            _energy = rododendrs::rrmse<std::vector, std::deque>(
+                    results, g_training_data);
+            _energy_calculated = true;
         }
         return _energy;
     }
@@ -60,6 +75,34 @@ public:
         reset_energy();
     }
 };
+
+template <typename TState>
+void init_training_data(lapsa::Context<TState>& c)
+{
+    (void)c;
+    assert(g_training_data.empty());
+    for (size_t i = 0; i < g_training_data_n; i++) {
+        g_training_data.push_back(rododendrs::rnd_in_range(
+                g_training_data_min, g_training_data_max));
+    }
+    assert(g_training_data.size() == g_training_data_n);
+}
+
+template <typename TState>
+void update_training_data(lapsa::Context<TState>& c)
+{
+    if (c.state_i % g_training_update_period) {
+        return;
+    }
+
+    assert(!g_training_data.empty());
+    for (size_t i = 0; i < g_training_update_n; i++) {
+        g_training_data.pop_front();
+        g_training_data.push_back(rododendrs::rnd_in_range(
+                g_training_data_min, g_training_data_max));
+    }
+    assert(g_training_data.size() == g_training_data_n);
+}
 
 template <typename TState>
 void create_report_files(lapsa::Context<TState>& c)
@@ -106,9 +149,11 @@ int main()
     lsm.init_functions = {
             lapsa::init_log<MyState>,
             lapsa::init_report_linear<MyState>,
+            init_training_data<MyState>,
             lapsa::randomize_state<MyState>,
     };
     lsm.init_loop_functions = {
+            update_training_data<MyState>,
             lapsa::propose_new_state<MyState>,
             lapsa::record_init_temperature<MyState>,
             lapsa::select_init_temperature_as_max<MyState>,
@@ -116,8 +161,10 @@ int main()
             lapsa::check_init_done<MyState>,
     };
     lsm.run_loop_functions = {
+            update_training_data<MyState>,
             lapsa::propose_new_state<MyState>,
-            lapsa::decide_to_cool<MyState>,
+            lapsa::record_energy<MyState>,
+            lapsa::decide_to_cool_sma<MyState>,
             lapsa::cool_at_rate<MyState>,
             lapsa::update_state<MyState>,
             lapsa::check_run_done<MyState>,

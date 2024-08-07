@@ -194,7 +194,6 @@ struct Settings {
     double max_weight_step              = 10;
     double min_bias_step                = -10;
     double max_bias_step                = 10;
-    size_t max_op_weight                = 100;
     size_t op_weights[Operation::N_OPS] = {1};
     Neuron::AFID neuron_afid            = Neuron::AFID::AF_SIGMOID;
 
@@ -218,7 +217,6 @@ struct Settings {
         max_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight_step")),
         min_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias_step")),
         max_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias_step")),
-        max_op_weight   (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_op_weight")),
         neuron_afid     (Neuron::str_to_afid(iestade::string_from_json(config_filepath, key_path_prefix + "/activation_function")))
     {
         op_weights[Operation::ADD_INPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_input");
@@ -260,12 +258,6 @@ public:
         assert(settings.n_inputs > 0);
         assert(settings.n_outputs > 0);
         assert(settings.max_n_hidden > 0);
-        assert(settings.max_op_weight > 0);
-#ifndef NDEBUG
-        for (auto w : settings.op_weights) {
-            assert(w <= settings.max_op_weight);
-        }
-#endif
         assert(settings.min_init_weight <= settings.max_init_weight);
         assert(settings.min_weight_step <= settings.max_weight_step);
         assert(settings.min_bias_step <= settings.max_bias_step);

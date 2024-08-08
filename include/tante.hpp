@@ -196,28 +196,46 @@ struct Settings {
     double max_bias_step                = 10;
     size_t op_weights[Operation::N_OPS] = {1};
     Neuron::AFID neuron_afid            = Neuron::AFID::AF_SIGMOID;
+    std::string input_graphviz_shape    = "doublecircle";
+    std::string input_graphviz_cluster  = "inputs";
+    double input_graphviz_width         = 0.4;
+    std::string output_graphviz_shape   = "doublecircle";
+    std::string output_graphviz_cluster = "outputs";
+    double output_graphviz_width        = 0.4;
+    std::string hidden_graphviz_shape   = "circle";
+    std::string hidden_graphviz_cluster = "";
+    double hidden_graphviz_width        = 0.4;
 
     Settings() {}
 
     // clang-format off
     Settings(const std::string& config_filepath,
              const std::string& key_path_prefix) :
-        n_inputs        (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_inputs")),
-        n_outputs       (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_outputs")),
-        max_n_hidden    (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_n_hidden")),
-        min_init_weight (iestade::double_from_json(config_filepath, key_path_prefix + "/min_init_weight")),
-        max_init_weight (iestade::double_from_json(config_filepath, key_path_prefix + "/max_init_weight")),
-        limit_weight    (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_weight")),
-        limit_bias      (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_bias")),
-        min_weight      (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight")),
-        max_weight      (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight")),
-        min_bias        (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias")),
-        max_bias        (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias")),
-        min_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight_step")),
-        max_weight_step (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight_step")),
-        min_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias_step")),
-        max_bias_step   (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias_step")),
-        neuron_afid     (Neuron::str_to_afid(iestade::string_from_json(config_filepath, key_path_prefix + "/activation_function")))
+        n_inputs                (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_inputs")),
+        n_outputs               (iestade::size_t_from_json(config_filepath, key_path_prefix + "/n_outputs")),
+        max_n_hidden            (iestade::size_t_from_json(config_filepath, key_path_prefix + "/max_n_hidden")),
+        min_init_weight         (iestade::double_from_json(config_filepath, key_path_prefix + "/min_init_weight")),
+        max_init_weight         (iestade::double_from_json(config_filepath, key_path_prefix + "/max_init_weight")),
+        limit_weight            (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_weight")),
+        limit_bias              (iestade::bool_from_json  (config_filepath, key_path_prefix + "/limit_bias")),
+        min_weight              (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight")),
+        max_weight              (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight")),
+        min_bias                (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias")),
+        max_bias                (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias")),
+        min_weight_step         (iestade::double_from_json(config_filepath, key_path_prefix + "/min_weight_step")),
+        max_weight_step         (iestade::double_from_json(config_filepath, key_path_prefix + "/max_weight_step")),
+        min_bias_step           (iestade::double_from_json(config_filepath, key_path_prefix + "/min_bias_step")),
+        max_bias_step           (iestade::double_from_json(config_filepath, key_path_prefix + "/max_bias_step")),
+        neuron_afid             (Neuron::str_to_afid(iestade::string_from_json(config_filepath, key_path_prefix + "/neuron_activation_function"))),
+        input_graphviz_shape    (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/input_shape")),
+        input_graphviz_cluster  (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/input_cluster")),
+        input_graphviz_width    (iestade::double_from_json(config_filepath, key_path_prefix + "/graphviz/input_width")),
+        output_graphviz_shape   (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/output_shape")),
+        output_graphviz_cluster (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/output_cluster")),
+        output_graphviz_width   (iestade::double_from_json(config_filepath, key_path_prefix + "/graphviz/output_width")),
+        hidden_graphviz_shape   (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/hidden_shape")),
+        hidden_graphviz_cluster (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/hidden_cluster")),
+        hidden_graphviz_width   (iestade::double_from_json(config_filepath, key_path_prefix + "/graphviz/hidden_width"))
     {
         op_weights[Operation::ADD_INPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_input");
         op_weights[Operation::RM_INPUT]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_input");
@@ -518,6 +536,7 @@ public:
     void to_csv(const std::string& neurons_filepath,
                 const std::string& connections_filepath)
     {
+        _update_graphviz();
         _g.to_csv(neurons_filepath, connections_filepath);
     }
 
@@ -694,6 +713,66 @@ private:
         assert(v != nullptr);
         v->bias =
                 rododendrs::rnd_in_range(settings.min_bias, settings.max_bias);
+    }
+
+    void _update_graphviz()
+    {
+        for (size_t ii : _inputs_i.all_i()) {
+            _update_graphviz_input(i, *_inputs_i.at(ii));
+        }
+
+        for (size_t oi : _outputs_i.all_i()) {
+            _update_graphviz_output(i, *_outputs_i.at(oi));
+        }
+
+        for (size_t hi : _hidden_i.all_i()) {
+            _update_graphviz_hidden(i, *_hidden_i.at(hi));
+        }
+
+        for (size_t ei : _g.all_edges_i()) {
+            _update_graphviz_edge(ei);
+        }
+    }
+
+    void _update_graphviz_input(size_t i, size_t vi)
+    {
+        auto* v = _g.vertex_at(vi);
+        assert(v != nullptr);
+        v->graphviz_shape   = settings.input_graphviz_shape;
+        v->graphviz_cluster = settings.input_graphviz_cluster;
+        v->graphviz_width   = settings.input_graphviz_width;
+        v->label = "i" + std::to_string(i) + "(v" + std::to_string(vi) +
+                   "):b=" + std::to_string(v->bias);
+    }
+
+    void _update_graphviz_output(size_t i, size_t vi)
+    {
+        auto* v = _g.vertex_at(vi);
+        assert(v != nullptr);
+        v->graphviz_shape   = settings.output_graphviz_shape;
+        v->graphviz_cluster = settings.output_graphviz_cluster;
+        v->graphviz_width   = settings.output_graphviz_width;
+        v->label = "o" + std::to_string(i) + "(v" + std::to_string(vi) +
+                   "):b=" + std::to_string(v->bias);
+    }
+
+    void _update_graphviz_hidden(size_t i, size_t vi)
+    {
+        auto* v = _g.vertex_at(vi);
+        assert(v != nullptr);
+        v->graphviz_shape   = settings.hidden_graphviz_shape;
+        v->graphviz_cluster = settings.hidden_graphviz_cluster;
+        v->graphviz_width   = settings.hidden_graphviz_width;
+        v->label = "h" + std::to_string(i) + "(v" + std::to_string(vi) +
+                   "):b=" + std::to_string(v->bias);
+    }
+
+    void _update_graphviz_edge(size_t ei)
+    {
+        auto* e = _g.edge_at(ei);
+        assert(e != nullptr);
+        e->label =
+                "e" + std::to_string(ei) + ":w=" + std::to_string(e->weight);
     }
 };
 

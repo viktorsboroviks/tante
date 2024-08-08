@@ -14,7 +14,7 @@
     "n_reports": 200
   },
   "tante": {
-    "activation_function": "sigmoid",
+    "neuron_activation_function": "sigmoid",
     "n_inputs": 1,
     "n_outputs": 1,
     "max_n_hidden": 10,
@@ -43,6 +43,17 @@
       "step_bias": 100,
       "rnd_weight": 1,
       "rnd_bias": 1
+    },
+    "graphviz": {
+      "input_shape": "doublecircle",
+      "input_cluster": "inputs",
+      "input_width": 0.4,
+      "output_shape": "doublecircle",
+      "output_cluster": "outputs",
+      "output_width": 0.4,
+      "hidden_shape": "circle",
+      "hidden_cluster": "",
+      "hidden_width": 0.4
     }
   },
   "training": {

@@ -55,7 +55,7 @@ vertices_paths = find_by_prefix(
 edges_paths = find_by_prefix(config_json["search_dir"], config_json["edges_prefix"])
 assert len(vertices_paths) == len(edges_paths)
 
-for i in range(len(vertices_paths)):
+for i in range(1, len(vertices_paths)):
     vertices_path = vertices_paths[i]
     edges_path = edges_paths[i]
     assert get_file_i_str(vertices_path) == get_file_i_str(edges_path)

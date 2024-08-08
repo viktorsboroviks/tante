@@ -57,5 +57,19 @@
     "neurons_file_prefix": "neurons_",
     "connections_file_prefix": "connections_",
     "results_file_prefix": "results_"
+  },
+  "plot_graphs": {
+    "search_dir": "output/reports",
+    "vertices_prefix": "neurons_",
+    "edges_prefix": "connections_",
+    "output_dir": "output",
+    "output_prefix": "graph_",
+    "plot_graph_path": "grafiins/scripts/plot_graph.py"
+  },
+  "plot_graph": {
+    "graphviz": {
+      "ordering": "in",
+      "rankdir": "LR"
+    }
   }
 }

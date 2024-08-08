@@ -2,10 +2,13 @@
 	all \
 	examples \
 	run_find_sin \
+	plot_find_sin \
+	movie_find_sin \
 	benchmarks \
 	format \
 	clang-format \
 	jq-format \
+	black-format \
 	clean \
 	distclean
 
@@ -21,7 +24,7 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v5.2
+	cd grafiins; git checkout v5.4
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git
@@ -63,6 +66,18 @@ run_find_sin: output find_sin.o
 	mkdir -p reports
 	./find_sin.o
 
+plot_find_sin:
+	python3 scripts/plot_graphs.py \
+		--config=examples/find_sin_config.json \
+		--config-section="plot_graphs"
+
+movie_find_sin:
+# detailed description:
+# https://stackoverflow.com/questions/24961127/how-to-create-a-video-from-images-with-ffmpeg
+	rm -rf output/movie.mp4
+	cd output; ffmpeg -framerate 7 -pattern_type glob -i 'reports/*.png' \
+		-c:v libx264 -pix_fmt yuv420p movie.mp4
+
 benchmarks: acceptance_f.o
 
 acceptance_f.o: benchmarks/acceptance_f.cpp
@@ -70,7 +85,7 @@ acceptance_f.o: benchmarks/acceptance_f.cpp
 		-std=c++20 -O3 \
 		benchmarks/acceptance_f.cpp -o $@
 
-format: clang-format jq-format
+format: clang-format jq-format black-format
 
 clang-format: \
 		include/tante.hpp \
@@ -86,6 +101,9 @@ jq-format: \
 	jq . config.json | sponge config.json
 	jq . examples/find_same_config.json | sponge examples/find_same_config.json
 	jq . examples/find_sin_config.json | sponge examples/find_sin_config.json
+
+black-format: scripts/plot_graphs.py
+	black $^
 
 clean:
 	rm -rf `find . -name "*.o"`

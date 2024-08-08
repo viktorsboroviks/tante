@@ -47,15 +47,18 @@ public:
             _energy = 0;
             _last_inputs.clear();
             _last_outputs.clear();
+            std::vector<double> correct;
             for (size_t i = 0; i < g_training_data.size(); i++) {
                 _last_inputs.push_back(g_training_data[i]);
                 std::vector<double> inputs;
                 inputs.push_back(g_training_data[i]);
                 assert(inputs.size() == net.settings.n_inputs);
+                correct.push_back(std::sin(inputs[0]));
                 _last_outputs.push_back(net.infer(inputs)[0]);
             }
-            _energy = rododendrs::rrmse<std::vector, std::deque>(
-                    _last_outputs, g_training_data);
+
+            _energy = rododendrs::rrmse<std::vector, std::vector>(
+                    _last_outputs, correct);
             _energy_calculated = true;
         }
         return _energy;

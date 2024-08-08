@@ -28,7 +28,7 @@ enum Operation {
     RM_INPUT,
     ADD_OUTPUT,
     RM_OUTPUT,
-    ADD_HIDDEN,
+    ATTACH_HIDDEN,
     RM_HIDDEN,
     ADD_CONNECTION,
     RM_CONNECTION,
@@ -241,7 +241,7 @@ struct Settings {
         op_weights[Operation::RM_INPUT]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_input");
         op_weights[Operation::ADD_OUTPUT]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_output");
         op_weights[Operation::RM_OUTPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_output");
-        op_weights[Operation::ADD_HIDDEN]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_hidden");
+        op_weights[Operation::ATTACH_HIDDEN]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/attach_hidden");
         op_weights[Operation::RM_HIDDEN]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_hidden");
         op_weights[Operation::ADD_CONNECTION]   = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_connection");
         op_weights[Operation::RM_CONNECTION]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_connection");
@@ -332,18 +332,13 @@ public:
         // add connections and hidden neurons until the network is restored
         while (!is_operational()) {
             const std::vector<Operation> allowed_ops = {
-                    Operation::ADD_HIDDEN,
-                    Operation::RM_HIDDEN,
+                    Operation::ATTACH_HIDDEN,
                     Operation::ADD_CONNECTION,
-                    Operation::RM_CONNECTION,
-                    Operation::STEP_WEIGHT,
-                    Operation::STEP_BIAS,
-                    Operation::RND_WEIGHT,
-                    Operation::RND_BIAS,
             };
 
-            while (!apply_operation(get_random_operation(allowed_ops))) {};
+            while (!apply_operation(get_random_operation(allowed_ops)));
         }
+        _rm_dangling();
         DEBUG("is operational");
     }
 
@@ -408,8 +403,8 @@ public:
                 }
                 _rm_output(_outputs_i.rnd_i());
                 return true;
-            case Operation::ADD_HIDDEN:
-                return _add_hidden().has_value();
+            case Operation::ATTACH_HIDDEN:
+                return _attach_hidden();
             case Operation::RM_HIDDEN:
                 if (_hidden_i.empty()) {
                     return false;
@@ -620,6 +615,34 @@ private:
         return hid_i;
     }
 
+    bool _attach_hidden()
+    {
+        DEBUG("attaching hidden...");
+
+        if (_g.n_vertices() < 2) {
+            return false;
+        }
+
+        auto h = _add_hidden();
+        if (!h.has_value()) {
+            return false;
+        }
+
+        size_t mid_vi       = *_hidden_i.at(h.value());
+        const size_t src_vi = _g.rnd_vertex_i();
+        size_t dst_vi;
+
+        do {
+            dst_vi = _g.rnd_vertex_i();
+        } while (dst_vi == src_vi);
+
+        if (!_add_connection(src_vi, mid_vi).has_value() ||
+            !_add_connection(mid_vi, dst_vi).has_value()) {
+            return false;
+        }
+        return true;
+    }
+
     void _rm_hidden(size_t i)
     {
         DEBUG("removing hidden...");
@@ -632,6 +655,18 @@ private:
         // this will also update records in edges and adjucent vertices in _g
         _g.remove_vertex(vi);
         _hidden_i.remove(i);
+    }
+
+    void _rm_dangling()
+    {
+        DEBUG("removing dangling neurons...");
+
+        const std::vector all_hi = _hidden_i.all_i();
+        for (size_t hi : all_hi) {
+            if (_g.vertex_is_dangling(*_hidden_i.at(hi))) {
+                _rm_hidden(hi);
+            }
+        }
     }
 
     // this function is needed, as the graph itself is not aware of
@@ -718,15 +753,15 @@ private:
     void _update_graphviz()
     {
         for (size_t ii : _inputs_i.all_i()) {
-            _update_graphviz_input(i, *_inputs_i.at(ii));
+            _update_graphviz_input(ii, *_inputs_i.at(ii));
         }
 
         for (size_t oi : _outputs_i.all_i()) {
-            _update_graphviz_output(i, *_outputs_i.at(oi));
+            _update_graphviz_output(oi, *_outputs_i.at(oi));
         }
 
         for (size_t hi : _hidden_i.all_i()) {
-            _update_graphviz_hidden(i, *_hidden_i.at(hi));
+            _update_graphviz_hidden(hi, *_hidden_i.at(hi));
         }
 
         for (size_t ei : _g.all_edges_i()) {

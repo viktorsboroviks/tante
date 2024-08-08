@@ -24,7 +24,7 @@ lapsa:
 
 grafiins:
 	git clone git@github.com:viktorsboroviks/grafiins.git
-	cd grafiins; git checkout v5.4
+	cd grafiins; git checkout v5.5
 
 rododendrs:
 	git clone git@github.com:viktorsboroviks/rododendrs.git

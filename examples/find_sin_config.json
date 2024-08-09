@@ -1,23 +1,23 @@
 {
   "lapsa": {
-    "n_states": 100000,
+    "n_states": 1000000,
     "init_p_acceptance": 0.97,
     "init_t_log_len": 1000,
     "cooling_rate": 0.95,
     "cooling_round_len": 1,
     "e_sma_fast_len": 50,
     "e_sma_slow_len": 200,
-    "e_sma_update_period": 100,
+    "e_sma_update_period": 10,
     "progress_update_period": 1000,
     "log_filename": "output/log.csv",
     "stats_filename": "output/stats.txt",
-    "n_reports": 10
+    "n_reports": 200
   },
   "tante": {
     "neuron_activation_function": "sigmoid",
     "n_inputs": 1,
     "n_outputs": 1,
-    "max_n_hidden": 50,
+    "max_n_hidden": 100,
     "min_init_weight": -1.0,
     "max_init_weight": 1.0,
     "limit_weight": false,
@@ -36,32 +36,33 @@
       "add_output": 0,
       "rm_output": 0,
       "attach_hidden": 3,
-      "rm_hidden": 1,
+      "rm_hidden": 2,
       "add_connection": 3,
-      "rm_connection": 1,
-      "step_weight": 100,
-      "step_bias": 100,
+      "rm_connection": 2,
+      "step_weight": 10,
+      "step_bias": 10,
       "rnd_weight": 0,
       "rnd_bias": 0
     },
     "graphviz": {
       "input_shape": "doublecircle",
       "input_cluster": "inputs",
-      "input_width": 0.4,
+      "input_width": 0.3,
       "output_shape": "doublecircle",
       "output_cluster": "outputs",
-      "output_width": 0.4,
+      "output_width": 0.3,
       "hidden_shape": "circle",
       "hidden_cluster": "",
-      "hidden_width": 0.4
+      "hidden_width": 0.3
     }
   },
   "training": {
-    "data_min": -10,
-    "data_max": 10,
-    "data_n": 1000,
-    "update_n": 1,
-    "update_period": 1
+    "data_min": -5,
+    "data_max": 5,
+    "init_n": 10000,
+    "add_n": 30,
+    "rm_n": 25,
+    "update_period": 100
   },
   "reports": {
     "dir_name": "output/reports",
@@ -80,7 +81,13 @@
   "plot_graph": {
     "graphviz": {
       "ordering": "in",
-      "rankdir": "LR"
+      "rankdir": "LR",
+      "fontsize": "8",
+      "fontname": "Monospace",
+      "labelloc": "c"
     }
+  },
+  "plot_all": {
+    "log_path": "output/log.csv"
   }
 }

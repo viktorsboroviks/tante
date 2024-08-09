@@ -338,7 +338,7 @@ public:
 
             while (!apply_operation(get_random_operation(allowed_ops)));
         }
-        _rm_dangling();
+        remove_dangling_neurons();
         DEBUG("is operational");
     }
 
@@ -458,6 +458,18 @@ public:
         // this should never happen
         assert(false);
         return false;
+    }
+
+    void remove_dangling_neurons()
+    {
+        DEBUG("removing dangling neurons...");
+
+        const std::vector all_hi = _hidden_i.all_i();
+        for (size_t hi : all_hi) {
+            if (_g.vertex_is_dangling(*_hidden_i.at(hi))) {
+                _rm_hidden(hi);
+            }
+        }
     }
 
     std::vector<double> infer(const std::vector<double> inputs)
@@ -657,18 +669,6 @@ private:
         _hidden_i.remove(i);
     }
 
-    void _rm_dangling()
-    {
-        DEBUG("removing dangling neurons...");
-
-        const std::vector all_hi = _hidden_i.all_i();
-        for (size_t hi : all_hi) {
-            if (_g.vertex_is_dangling(*_hidden_i.at(hi))) {
-                _rm_hidden(hi);
-            }
-        }
-    }
-
     // this function is needed, as the graph itself is not aware of
     // limitations on setting connections between inputs/outputs/hidden
     std::optional<size_t> _add_connection(size_t src_vi, size_t dst_vi)
@@ -776,8 +776,10 @@ private:
         v->graphviz_shape   = settings.input_graphviz_shape;
         v->graphviz_cluster = settings.input_graphviz_cluster;
         v->graphviz_width   = settings.input_graphviz_width;
-        v->label = "i" + std::to_string(i) + "(v" + std::to_string(vi) +
-                   "):b=" + std::to_string(v->bias);
+        v->graphviz_label   = "i" + std::to_string(i);
+        v->graphviz_xlabel  = "i" + std::to_string(i) + "(v" +
+                             std::to_string(vi) +
+                             ")\\lb=" + std::to_string(v->bias);
     }
 
     void _update_graphviz_output(size_t i, size_t vi)
@@ -787,8 +789,10 @@ private:
         v->graphviz_shape   = settings.output_graphviz_shape;
         v->graphviz_cluster = settings.output_graphviz_cluster;
         v->graphviz_width   = settings.output_graphviz_width;
-        v->label = "o" + std::to_string(i) + "(v" + std::to_string(vi) +
-                   "):b=" + std::to_string(v->bias);
+        v->graphviz_label   = "o" + std::to_string(i);
+        v->graphviz_xlabel  = "o" + std::to_string(i) + "(v" +
+                             std::to_string(vi) +
+                             ")\\lb=" + std::to_string(v->bias);
     }
 
     void _update_graphviz_hidden(size_t i, size_t vi)
@@ -798,16 +802,18 @@ private:
         v->graphviz_shape   = settings.hidden_graphviz_shape;
         v->graphviz_cluster = settings.hidden_graphviz_cluster;
         v->graphviz_width   = settings.hidden_graphviz_width;
-        v->label = "h" + std::to_string(i) + "(v" + std::to_string(vi) +
-                   "):b=" + std::to_string(v->bias);
+        v->graphviz_label   = "h" + std::to_string(i);
+        v->graphviz_xlabel  = "h" + std::to_string(i) + "(v" +
+                             std::to_string(vi) +
+                             ")\\lb=" + std::to_string(v->bias);
     }
 
     void _update_graphviz_edge(size_t ei)
     {
         auto* e = _g.edge_at(ei);
         assert(e != nullptr);
-        e->label =
-                "e" + std::to_string(ei) + ":w=" + std::to_string(e->weight);
+        e->graphviz_label =
+                "e" + std::to_string(ei) + "\\lw=" + std::to_string(e->weight);
     }
 };
 

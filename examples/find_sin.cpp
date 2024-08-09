@@ -20,8 +20,9 @@ const std::string g_reports_results_file_prefix     = iestade::string_from_json(
 std::deque<double> g_training_data;
 double g_training_data_min                          = iestade::double_from_json(CONFIG_PATH, "training/data_min");
 double g_training_data_max                          = iestade::double_from_json(CONFIG_PATH, "training/data_max");
-size_t g_training_data_n                            = iestade::size_t_from_json(CONFIG_PATH, "training/data_n");
-size_t g_training_update_n                          = iestade::size_t_from_json(CONFIG_PATH, "training/update_n");
+size_t g_training_init_n                            = iestade::size_t_from_json(CONFIG_PATH, "training/init_n");
+size_t g_training_add_n                             = iestade::size_t_from_json(CONFIG_PATH, "training/add_n");
+size_t g_training_rm_n                              = iestade::size_t_from_json(CONFIG_PATH, "training/rm_n");
 size_t g_training_update_period                     = iestade::size_t_from_json(CONFIG_PATH, "training/update_period");
 // clang-format on
 
@@ -43,7 +44,7 @@ public:
     {
         // if energy not calculated, do it now and store the result
         if (!_energy_calculated || _last_inputs[0] != g_training_data[0]) {
-            assert(g_training_data.size() == g_training_data_n);
+            assert(g_training_data.size() > 0);
             _energy = 0;
             _last_inputs.clear();
             _last_outputs.clear();
@@ -100,8 +101,19 @@ public:
 
     void change()
     {
-        while (!net.apply_operation(net.get_random_operation()));
-        net.restore_randomly();
+        tante::Network potential_net = net;
+        while (true) {
+            // attempt to apply random operation
+            while (!potential_net.apply_operation(
+                    potential_net.get_random_operation()));
+            if (potential_net.is_operational()) {
+                break;
+            }
+            // if network is no longer operational, try again
+            potential_net = net;
+        }
+        net = potential_net;
+        net.remove_dangling_neurons();
         reset_energy();
     }
 };
@@ -111,11 +123,11 @@ void init_training_data(lapsa::Context<TState>& c)
 {
     (void)c;
     assert(g_training_data.empty());
-    for (size_t i = 0; i < g_training_data_n; i++) {
+    for (size_t i = 0; i < g_training_init_n; i++) {
         g_training_data.push_back(rododendrs::rnd_in_range(
                 g_training_data_min, g_training_data_max));
     }
-    assert(g_training_data.size() == g_training_data_n);
+    assert(g_training_data.size() == g_training_init_n);
 }
 
 template <typename TState>
@@ -126,12 +138,13 @@ void update_training_data(lapsa::Context<TState>& c)
     }
 
     assert(!g_training_data.empty());
-    for (size_t i = 0; i < g_training_update_n; i++) {
-        g_training_data.pop_front();
+    for (size_t i = 0; i < g_training_add_n; i++) {
         g_training_data.push_back(rododendrs::rnd_in_range(
                 g_training_data_min, g_training_data_max));
     }
-    assert(g_training_data.size() == g_training_data_n);
+    for (size_t i = 0; i < g_training_rm_n; i++) {
+        g_training_data.pop_front();
+    }
 }
 
 template <typename TState>

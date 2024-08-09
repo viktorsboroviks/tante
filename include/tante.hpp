@@ -24,38 +24,56 @@
 namespace tante {
 
 enum Operation {
-    ADD_INPUT = 0,
-    RM_INPUT,
-    ADD_OUTPUT,
-    RM_OUTPUT,
-    ATTACH_HIDDEN,
-    RM_HIDDEN,
-    ADD_CONNECTION,
-    RM_CONNECTION,
-    STEP_WEIGHT,
-    STEP_BIAS,
-    RND_WEIGHT,
-    RND_BIAS,
+    INPUT_ADD = 0,
+    INPUT_RM,
+    INPUT_AF_RND,
+    OUTPUT_ADD,
+    OUTPUT_RM,
+    OUTPUT_AF_RND,
+    HIDDEN_ATTACH,
+    HIDDEN_RM,
+    HIDDEN_AF_RND,
+    CONNECTION_ADD,
+    CONNECTION_RM,
+    WEIGHT_STEP,
+    WEIGHT_RND,
+    BIAS_STEP,
+    BIAS_RND,
     N_OPS,
 };
 
 class Neuron : public grafiins::Vertex {
 public:
     enum AFID {
-        AF_RANDOM = -1,
-        AF_TANH   = 0,
+        AF_RND  = -1,
+        AF_TANH = 0,
         AF_SIGMOID,
         AF_RELU,
+        AF_LINEAR,
+        AF_BINARY_STEP,
         N_AFS,
     };
 
     AFID afid;
     double bias = 0;
 
-    Neuron(AFID afid = AF_SIGMOID, std::string label = "") :
-        Vertex(label),
-        afid(afid)
+    Neuron(AFID in_afid = AF_RND, std::string label = "") :
+        Vertex(label)
     {
+        set_afid(in_afid);
+    }
+
+    void set_afid(AFID in)
+    {
+        assert(in >= AF_RND);
+        assert(in < N_AFS);
+
+        if (in == AF_RND) {
+            afid = (AFID)rododendrs::rnd_in_range(0, N_AFS);
+            return;
+        }
+
+        afid = in;
     }
 
     static double af_tanh(double in)
@@ -73,6 +91,16 @@ public:
         return std::max(0.0, in);
     }
 
+    static double af_linear(double in)
+    {
+        return in;
+    }
+
+    static double af_binary_step(double in)
+    {
+        return in > 0 ? 1 : 0;
+    }
+
     double activation_f(double in) const
     {
         return _activation_f_by_id(in, afid);
@@ -81,7 +109,7 @@ public:
     static std::string afid_to_str(AFID in)
     {
         switch (in) {
-            case AFID::AF_RANDOM:
+            case AFID::AF_RND:
                 return "random";
             case AFID::AF_TANH:
                 return "tanh";
@@ -89,6 +117,10 @@ public:
                 return "sigmoid";
             case AFID::AF_RELU:
                 return "relu";
+            case AFID::AF_LINEAR:
+                return "linear";
+            case AFID::AF_BINARY_STEP:
+                return "binary_step";
             default:
                 // this should not happen
                 assert(false);
@@ -102,7 +134,7 @@ public:
     static AFID str_to_afid(const std::string& in)
     {
         if (in == "random") {
-            return AFID::AF_RANDOM;
+            return AFID::AF_RND;
         }
         else if (in == "tanh") {
             return AFID::AF_TANH;
@@ -112,6 +144,12 @@ public:
         }
         else if (in == "relu") {
             return AFID::AF_RELU;
+        }
+        else if (in == "linear") {
+            return AFID::AF_LINEAR;
+        }
+        else if (in == "binary_step") {
+            return AFID::AF_BINARY_STEP;
         }
 
         // this should not happen
@@ -130,9 +168,9 @@ public:
 private:
     double _activation_f_by_id(double in, AFID in_afid) const
     {
-        const int rnd_afid = rododendrs::rnd01() * (double)N_AFS;
+        const int rnd_afid = rododendrs::rnd_in_range(0, N_AFS);
         switch (in_afid) {
-            case AF_RANDOM:
+            case AF_RND:
                 return _activation_f_by_id(in, (AFID)rnd_afid);
             case AF_TANH:
                 return af_tanh(in);
@@ -140,6 +178,10 @@ private:
                 return af_sigmoid(in);
             case AF_RELU:
                 return af_relu(in);
+            case AF_LINEAR:
+                return af_linear(in);
+            case AF_BINARY_STEP:
+                return af_binary_step(in);
             case N_AFS:
             default:
                 assert(false);
@@ -237,18 +279,21 @@ struct Settings {
         hidden_graphviz_cluster (iestade::string_from_json(config_filepath, key_path_prefix + "/graphviz/hidden_cluster")),
         hidden_graphviz_width   (iestade::double_from_json(config_filepath, key_path_prefix + "/graphviz/hidden_width"))
     {
-        op_weights[Operation::ADD_INPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_input");
-        op_weights[Operation::RM_INPUT]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_input");
-        op_weights[Operation::ADD_OUTPUT]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_output");
-        op_weights[Operation::RM_OUTPUT]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_output");
-        op_weights[Operation::ATTACH_HIDDEN]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/attach_hidden");
-        op_weights[Operation::RM_HIDDEN]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_hidden");
-        op_weights[Operation::ADD_CONNECTION]   = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/add_connection");
-        op_weights[Operation::RM_CONNECTION]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rm_connection");
-        op_weights[Operation::STEP_WEIGHT]      = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/step_weight");
-        op_weights[Operation::STEP_BIAS]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/step_bias");
-        op_weights[Operation::RND_WEIGHT]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rnd_weight");
-        op_weights[Operation::RND_BIAS]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/rnd_bias");
+        op_weights[Operation::INPUT_ADD]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/input_add");
+        op_weights[Operation::INPUT_RM]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/input_rm");
+        op_weights[Operation::INPUT_AF_RND]     = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/input_af_rnd");
+        op_weights[Operation::OUTPUT_ADD]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/output_add");
+        op_weights[Operation::OUTPUT_RM]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/output_rm");
+        op_weights[Operation::OUTPUT_AF_RND]     = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/output_af_rnd");
+        op_weights[Operation::HIDDEN_ATTACH]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/hidden_attach");
+        op_weights[Operation::HIDDEN_RM]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/hidden_rm");
+        op_weights[Operation::HIDDEN_AF_RND]     = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/hidden_af_rnd");
+        op_weights[Operation::CONNECTION_ADD]   = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/connection_add");
+        op_weights[Operation::CONNECTION_RM]    = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/connection_rm");
+        op_weights[Operation::WEIGHT_STEP]      = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/weight_step");
+        op_weights[Operation::WEIGHT_RND]       = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/weight_rnd");
+        op_weights[Operation::BIAS_STEP]        = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/bias_step");
+        op_weights[Operation::BIAS_RND]         = iestade::size_t_from_json(config_filepath, key_path_prefix + "/op_weights/bias_rnd");
     }
     // clang-format on
 };
@@ -332,8 +377,8 @@ public:
         // add connections and hidden neurons until the network is restored
         while (!is_operational()) {
             const std::vector<Operation> allowed_ops = {
-                    Operation::ATTACH_HIDDEN,
-                    Operation::ADD_CONNECTION,
+                    Operation::HIDDEN_ATTACH,
+                    Operation::CONNECTION_ADD,
             };
 
             while (!apply_operation(get_random_operation(allowed_ops)));
@@ -358,8 +403,8 @@ public:
         }
 
         const size_t rnd_value = rododendrs::rnd01() * op_weights_sum;
-        assert(Operation::ADD_INPUT == 0);
-        for (size_t op = Operation::ADD_INPUT; op < Operation::N_OPS; op++) {
+        assert(Operation::INPUT_ADD == 0);
+        for (size_t op = Operation::INPUT_ADD; op < Operation::N_OPS; op++) {
             if (op_value[op] == 0) {
                 continue;
             }
@@ -375,7 +420,7 @@ public:
     Operation get_random_operation()
     {
         std::vector<Operation> ops;
-        assert(Operation::ADD_INPUT == 0);
+        assert(Operation::INPUT_ADD == 0);
         for (size_t op = 0; op < Operation::N_OPS; op++) {
             ops.push_back((Operation)op);
         }
@@ -387,67 +432,72 @@ public:
         DEBUG("applying operation...");
 
         switch (op) {
-            case Operation::ADD_INPUT:
+            case Operation::INPUT_ADD:
                 return _add_input().has_value();
-            case Operation::RM_INPUT:
+            case Operation::INPUT_RM:
                 if (_inputs_i.empty()) {
                     return false;
                 }
                 _rm_input(_inputs_i.rnd_i());
                 return true;
-            case Operation::ADD_OUTPUT:
+            case Operation::INPUT_AF_RND:
+                return _af_rnd(_inputs_i);
+            case Operation::OUTPUT_ADD:
                 return _add_output().has_value();
-            case Operation::RM_OUTPUT:
+            case Operation::OUTPUT_RM:
                 if (_outputs_i.empty()) {
                     return false;
                 }
                 _rm_output(_outputs_i.rnd_i());
                 return true;
-            case Operation::ATTACH_HIDDEN:
-                return _attach_hidden();
-            case Operation::RM_HIDDEN:
+            case Operation::OUTPUT_AF_RND:
+                return _af_rnd(_outputs_i);
+            case Operation::HIDDEN_ATTACH:
+                return _hidden_attach();
+            case Operation::HIDDEN_RM:
                 if (_hidden_i.empty()) {
                     return false;
                 }
                 _rm_hidden(_hidden_i.rnd_i());
                 return true;
-            case Operation::ADD_CONNECTION:
+            case Operation::HIDDEN_AF_RND:
+                return _af_rnd(_hidden_i);
+            case Operation::CONNECTION_ADD:
                 if (_g.n_vertices() < 2) {
                     return false;
                 }
                 return _add_connection(_g.rnd_vertex_i(), _g.rnd_vertex_i())
                         .has_value();
-            case Operation::RM_CONNECTION:
+            case Operation::CONNECTION_RM:
                 if (_g.n_edges() == 0) {
                     return false;
                 }
                 _rm_connection(_g.rnd_edge_i());
                 return true;
-            case Operation::STEP_WEIGHT:
+            case Operation::WEIGHT_STEP:
                 if (_g.n_edges() == 0) {
                     return false;
                 }
-                _step_weight(_g.rnd_edge_i());
+                _weight_step(_g.rnd_edge_i());
                 return true;
-            case Operation::STEP_BIAS:
-                if (_g.n_vertices() == 0) {
-                    return false;
-                }
-                _step_bias(_g.rnd_vertex_i());
-                return true;
-            case Operation::RND_WEIGHT:
+            case Operation::WEIGHT_RND:
                 if (_g.n_edges() == 0) {
                     return false;
                 }
-                _rnd_weight(_g.rnd_edge_i());
+                _weight_rnd(_g.rnd_edge_i());
                 return true;
-            case Operation::RND_BIAS:
+            case Operation::BIAS_STEP:
                 if (_g.n_vertices() == 0) {
                     return false;
                 }
-                _rnd_bias(_g.rnd_vertex_i());
+                _bias_step(_g.rnd_vertex_i());
                 return true;
-
+            case Operation::BIAS_RND:
+                if (_g.n_vertices() == 0) {
+                    return false;
+                }
+                _bias_rnd(_g.rnd_vertex_i());
+                return true;
             case Operation::N_OPS:
             default:
                 // this should never happen
@@ -612,7 +662,7 @@ private:
         _outputs_i.remove(i);
     }
 
-    std::optional<size_t> _add_hidden()
+    std::optional<size_t> _hidden_add()
     {
         DEBUG("adding hidden...");
 
@@ -627,7 +677,7 @@ private:
         return hid_i;
     }
 
-    bool _attach_hidden()
+    bool _hidden_attach()
     {
         DEBUG("attaching hidden...");
 
@@ -635,7 +685,7 @@ private:
             return false;
         }
 
-        auto h = _add_hidden();
+        auto h = _hidden_add();
         if (!h.has_value()) {
             return false;
         }
@@ -669,6 +719,20 @@ private:
         _hidden_i.remove(i);
     }
 
+    bool _af_rnd(garaza::Storage<size_t>& c)
+    {
+        if (c.empty()) {
+            return false;
+        }
+
+        const size_t i  = c.rnd_i();
+        const size_t vi = *c.at(i);
+        auto* v         = _g.vertex_at(vi);
+        assert(v != nullptr);
+        v->set_afid(Neuron::AFID::AF_RND);
+        return true;
+    }
+
     // this function is needed, as the graph itself is not aware of
     // limitations on setting connections between inputs/outputs/hidden
     std::optional<size_t> _add_connection(size_t src_vi, size_t dst_vi)
@@ -696,7 +760,7 @@ private:
         return _g.remove_edge(ei);
     }
 
-    void _step_weight(size_t ei)
+    void _weight_step(size_t ei)
     {
         DEBUG("stepping weight...");
 
@@ -712,7 +776,7 @@ private:
         }
     }
 
-    void _step_bias(size_t vi)
+    void _bias_step(size_t vi)
     {
         DEBUG("stepping bias...");
 
@@ -728,7 +792,7 @@ private:
         }
     }
 
-    void _rnd_weight(size_t ei)
+    void _weight_rnd(size_t ei)
     {
         DEBUG("randomizing weight...");
 
@@ -739,7 +803,7 @@ private:
                                              settings.max_weight);
     }
 
-    void _rnd_bias(size_t vi)
+    void _bias_rnd(size_t vi)
     {
         DEBUG("randomizing bias...");
 

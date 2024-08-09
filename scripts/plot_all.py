@@ -7,6 +7,48 @@ import vplot
 DEFAULT_CONFIG_SECTION = "plot_all"
 COMPRESSED_SIZE = 1000
 
+def inference_subplot(
+    data_csv,
+    col,
+    row,
+    data_col_x,
+    data_col_out,
+    data_col_cor,
+    compress_x_to_n=COMPRESSED_SIZE
+):
+    try:
+        table = pd.read_csv(data_csv, comment="#")
+        if table.index.size > compress_x_to_n:
+            x_step = int(table.index.size / compress_x_to_n)
+        else:
+            x_step = 1
+        table = table.iloc[::x_step]
+    except FileNotFoundError:
+        raise FileNotFoundError(f"{data_csv} not found")
+
+    return vplot.Subplot(
+        col=col,
+        row=row,
+        traces=[
+            vplot.Scatter(
+                mode="markers",
+                x=table[data_col_x],
+                y=table[data_col_out],
+                color=vplot.Color.RED,
+                name="output",
+                showlegend=True,
+            ),
+            vplot.Scatter(
+                mode="markers",
+                x=table[data_col_x],
+                y=table[data_col_cor],
+                color=vplot.Color.GREY,
+                name="correct",
+                showlegend=True,
+            ),
+        ],
+    )
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--config", help="path to a .json config file")
@@ -23,51 +65,14 @@ with open(args.config) as f:
 if args.config_section:
     config_json = config_json[args.config_section]
 
-# read and compress energy table to save processing time
-log_path = config_json["log_path"]
-try:
-    energy_table = pd.read_csv(log_path)
-    compressed_size = COMPRESSED_SIZE
-    if (energy_table.index.size > compressed_size):
-        compressed_x_step = int(energy_table.index.size / compressed_size)
-    else:
-        compressed_x_step = 1
-    compressed_energy_table = energy_table.iloc[::compressed_x_step]
-except FileNotFoundError:
-    print(f"plot_account_data skipped: {log_path} not found")
-    exit(-1)
+subplot = inference_subplot(data_csv=config_json["data_csv"],
+                            col=1,
+                            row=1,
+                            data_col_x="signal_input",
+                            data_col_out="signal_output",
+                            data_col_cor="signal_correct")
 
-# energy subplot
-subplots += [
-    vplot.Subplot(
-        col=2,
-        row=[1, last_row],
-        subtitle_text="energy",
-        subtitle_x=-0.03,
-        subtitle_y=-0.07,
-        traces=[
-            vplot.Step(
-                x=compressed_energy_table["state_i"],
-                y=compressed_energy_table["temperature"],
-                color=vplot.Color.RED,
-                name="temperature",
-                showlegend=True,
-            ),
-            vplot.Step(
-                x=compressed_energy_table["state_i"],
-                y=compressed_energy_table["energy"],
-                # secondary_y=True,
-                color=vplot.Color.BLUE,
-                name="energy",
-                showlegend=True,
-            ),
-        ],
-        lines=[
-            vplot.Lines(
-                x=[state],
-                color=vplot.Color.RED,
-                dash=vplot.Dash.SOLID,
-            )
-        ],
-    )
-]
+vplot.PlotlyPlot(
+    title_text="infered sin(x)",
+    subplots=[subplot]
+).to_file(config_json["output_svg"])

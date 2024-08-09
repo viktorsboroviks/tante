@@ -1,20 +1,20 @@
 {
   "lapsa": {
-    "n_states": 1000000,
+    "n_states": 150000,
     "init_p_acceptance": 0.97,
     "init_t_log_len": 1000,
     "cooling_rate": 0.95,
     "cooling_round_len": 1,
     "e_sma_fast_len": 50,
     "e_sma_slow_len": 200,
-    "e_sma_update_period": 10,
+    "e_sma_update_period": 100,
     "progress_update_period": 1000,
     "log_filename": "output/log.csv",
     "stats_filename": "output/stats.txt",
     "n_reports": 200
   },
   "tante": {
-    "neuron_activation_function": "sigmoid",
+    "neuron_activation_function": "random",
     "n_inputs": 1,
     "n_outputs": 1,
     "max_n_hidden": 100,
@@ -31,18 +31,21 @@
     "min_bias_step": -0.1,
     "max_bias_step": 0.1,
     "op_weights": {
-      "add_input": 0,
-      "rm_input": 0,
-      "add_output": 0,
-      "rm_output": 0,
-      "attach_hidden": 3,
-      "rm_hidden": 2,
-      "add_connection": 3,
-      "rm_connection": 2,
-      "step_weight": 10,
-      "step_bias": 10,
-      "rnd_weight": 0,
-      "rnd_bias": 0
+      "input_add": 0,
+      "input_rm": 0,
+      "input_af_rnd": 1,
+      "output_add": 0,
+      "output_rm": 0,
+      "output_af_rnd": 1,
+      "hidden_attach": 5,
+      "hidden_rm": 1,
+      "hidden_af_rnd": 2,
+      "connection_add": 5,
+      "connection_rm": 1,
+      "weight_step": 10,
+      "weight_rnd": 0,
+      "bias_step": 10,
+      "bias_rnd": 0
     },
     "graphviz": {
       "input_shape": "doublecircle",
@@ -59,7 +62,7 @@
   "training": {
     "data_min": -5,
     "data_max": 5,
-    "init_n": 10000,
+    "init_n": 1000,
     "add_n": 30,
     "rm_n": 25,
     "update_period": 100
@@ -88,6 +91,8 @@
     }
   },
   "plot_all": {
-    "log_path": "output/log.csv"
+    "log_csv": "output/log.csv",
+    "data_csv": "output/reports/results_149246.csv",
+    "output_svg": "output.svg"
   }
 }
